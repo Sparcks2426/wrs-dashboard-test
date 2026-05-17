@@ -359,6 +359,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <input type="text" class="sbox" id="sbox" placeholder="Search jobs or techs...">
       <button id="fullSchedBtn" onclick="backToTechView()" style="display:none;background:var(--ac);border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">← My View</button>
       <button id="calendarBtn" onclick="openCalendar()" style="background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">📅 Installation Calendar</button>
+      <button id="oncallBtn" onclick="openOncall()" style="display:none;background:#ef4444;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">🚨 On Call Rotation</button>
+      <button id="annBtn" onclick="openAnnAdmin()" style="display:none;background:#3b82f6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">📢 Announcements</button>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -504,12 +506,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
 
     <!-- Day headers -->
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-align:center;padding:0 2px">
-      <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:6px;font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-align:center;padding:0 2px">
+      <div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div>
     </div>
 
     <!-- Calendar grid -->
-    <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;min-height:380px"></div>
+    <div id="calGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-height:380px"></div>
 
     <!-- Footer info -->
     <div id="calFooter" style="margin-top:14px;font-size:11px;color:var(--dm2);text-align:center;line-height:1.6"></div>
@@ -543,6 +545,97 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
       <button onclick="closeInstallDay()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600">Close</button>
       <button id="installAddBtn" onclick="submitInstall()" style="background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;padding:9px 22px;cursor:pointer;font-size:13px;font-weight:700">Add Install</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ANNOUNCEMENT POPUP (shown once/day to techs) ── -->
+<div id="annPopupBg" onclick="if(event.target===this)dismissAnnouncement()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9200;align-items:center;justify-content:center;padding:16px">
+  <div id="annPopup" style="max-width:520px;width:100%;background:var(--sf);border:2px solid var(--ac);border-radius:var(--r16);padding:24px;box-shadow:0 32px 80px rgba(0,0,0,.7)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div id="annIcon" style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">📢</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase">Announcement</div>
+        <div id="annPostedBy" style="font-size:11px;color:var(--dm2);margin-top:2px">—</div>
+      </div>
+    </div>
+    <div id="annText" style="font-size:15px;color:var(--tx);line-height:1.5;margin-bottom:14px;white-space:pre-wrap;word-break:break-word">—</div>
+    <a id="annLink" href="#" target="_blank" rel="noopener" style="display:none;font-size:13px;color:var(--ac);text-decoration:underline;font-weight:700;margin-bottom:14px"></a>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
+      <button onclick="dismissAnnouncement()" style="background:var(--ac);border:none;border-radius:var(--r8);color:#fff;padding:9px 22px;cursor:pointer;font-size:13px;font-weight:700">Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADMIN: ANNOUNCEMENT COMPOSE / MANAGE MODAL ── -->
+<div id="annAdminBg" onclick="if(event.target===this)closeAnnAdmin()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9300;align-items:flex-start;justify-content:center;padding:30px 12px;overflow-y:auto">
+  <div style="max-width:600px;width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r16);padding:24px;box-shadow:0 32px 80px rgba(0,0,0,.7)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;border-bottom:1px solid var(--bd);padding-bottom:14px">
+      <div style="width:38px;height:38px;border-radius:10px;background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">📢</div>
+      <div style="flex:1">
+        <h3 style="font-size:16px;margin:0;color:var(--tx)">Announcements</h3>
+        <div style="font-size:11px;color:var(--dm2);margin-top:2px">Company-wide bulletin · Auto-expires</div>
+      </div>
+      <button onclick="closeAnnAdmin()" style="background:none;border:none;color:var(--dm2);font-size:22px;cursor:pointer;padding:4px 10px">✕</button>
+    </div>
+
+    <!-- Active announcements list -->
+    <div id="annAdminList" style="margin-bottom:18px"></div>
+
+    <!-- Compose form -->
+    <div style="border-top:1px solid var(--bd);padding-top:16px">
+      <div style="font-size:11px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Post New Announcement</div>
+
+      <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Message</div>
+      <textarea id="annComposeText" placeholder="Reminder: Memorial Day Monday — office closed..." style="width:100%;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r8);padding:10px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;resize:vertical;outline:none;min-height:72px;line-height:1.5;box-sizing:border-box;margin-bottom:10px"></textarea>
+
+      <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px">
+          <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Color</div>
+          <select id="annComposeColor" style="width:100%;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r8);padding:9px 10px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;box-sizing:border-box">
+            <option value="blue">Blue (info)</option>
+            <option value="red">Red (urgent)</option>
+            <option value="green">Green (good news)</option>
+            <option value="amber">Amber (heads up)</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:140px">
+          <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Expires On</div>
+          <input id="annComposeExpiry" type="date" style="width:100%;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r8);padding:9px 10px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;box-sizing:border-box;color-scheme:dark">
+        </div>
+      </div>
+
+      <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Link <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></div>
+      <input id="annComposeLink" type="url" placeholder="https://..." style="width:100%;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r8);padding:10px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;margin-bottom:14px;box-sizing:border-box">
+
+      <button onclick="postAnnouncement()" style="background:#3b82f6;border:none;border-radius:var(--r8);color:#fff;padding:9px 22px;cursor:pointer;font-size:13px;font-weight:700;width:100%">Post Announcement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ON-CALL ROTATION MODAL ── -->
+<div id="oncallBg" onclick="if(event.target===this)closeOncall()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 12px">
+  <div style="max-width:900px;width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r16);padding:24px;box-shadow:0 32px 80px rgba(0,0,0,.7)">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;border-bottom:1px solid var(--bd);padding-bottom:14px">
+      <div style="width:42px;height:42px;border-radius:12px;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">🚨</div>
+      <div style="flex:1">
+        <h3 style="font-size:18px;margin:0;color:var(--tx);font-weight:700">On Call Rotation</h3>
+        <div style="font-size:12px;color:var(--dm2);margin-top:2px">Weekend coverage · Louis → Christian → Geni → Jeff → Mijail → Alex · Repeats every 6 weeks</div>
+      </div>
+      <button onclick="closeOncall()" style="background:none;border:none;color:var(--dm2);font-size:24px;cursor:pointer;padding:4px 10px">✕</button>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px">
+      <button onclick="oncallNav(-1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">◀ 6 wks</button>
+      <div id="oncallLabel" style="font-size:18px;font-weight:700;min-width:200px;text-align:center;color:var(--tx)">—</div>
+      <button onclick="oncallNav(1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">6 wks ▶</button>
+      <button onclick="oncallGoToday()" style="background:var(--ac);border:none;border-radius:var(--r8);color:#fff;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700;margin-left:10px">TODAY</button>
+    </div>
+
+    <div id="oncallGrid"></div>
+
+    <div style="margin-top:14px;font-size:11px;color:var(--dm2);text-align:center;line-height:1.6">
+      Rotation is automatic and deterministic · 6-week cycle anchored to Mar 21, 2026
     </div>
   </div>
 </div>
@@ -993,6 +1086,18 @@ function startDash(user) {
     const showCal = canWrite || (isTech && (user.tech === 'Jeff' || user.tech === 'Landi'));
     calBtn.style.display = showCal ? 'inline-block' : 'none';
   }
+  // On-Call Rotation button: admins/write + the 6 rotation techs
+  const oncallBtn = document.getElementById('oncallBtn');
+  if (oncallBtn) {
+    const showOncall = canWrite || (isTech && ONCALL_TECHS.includes(user.tech));
+    oncallBtn.style.display = showOncall ? 'inline-block' : 'none';
+  }
+  // Announcements admin button: admins/write only
+  const annBtn = document.getElementById('annBtn');
+  if (annBtn) annBtn.style.display = canWrite ? 'inline-block' : 'none';
+
+  // Check for announcements (popup once per day for all users)
+  checkAnnouncements();
 
   // Load Leaflet lazily, then fetch data (map won't block login)
   loadLeaflet(() => { loadData(); });
@@ -1909,6 +2014,259 @@ document.getElementById('shopModalBg').addEventListener('click', function(e) {
 });
 
 // ════════════════════════════════════════════
+//  ANNOUNCEMENTS — company-wide bulletin
+// ════════════════════════════════════════════
+// Admins post short messages; techs see a popup once per day (per device).
+// Auto-expire after `expiresOn` date.
+
+let activeAnnouncements = [];
+
+const ANN_COLORS = {
+  blue:  { bg: 'rgba(59,130,246,.15)',  border: 'rgba(59,130,246,.5)',  accent: '#3b82f6', icon: '📢' },
+  red:   { bg: 'rgba(239,68,68,.15)',   border: 'rgba(239,68,68,.5)',   accent: '#ef4444', icon: '⚠️' },
+  green: { bg: 'rgba(34,197,94,.15)',   border: 'rgba(34,197,94,.5)',   accent: '#22c55e', icon: '✓' },
+  amber: { bg: 'rgba(245,158,11,.15)',  border: 'rgba(245,158,11,.5)',  accent: '#f59e0b', icon: '🔔' },
+};
+
+async function checkAnnouncements() {
+  try {
+    const res = await apiCall('/getAnnouncements', {});
+    activeAnnouncements = res.announcements || [];
+    if (activeAnnouncements.length === 0) return;
+    // Show the most recent announcement if not already dismissed today
+    const latest = activeAnnouncements[0];
+    const todayKey = `ann_dismissed_${latest.id}_${new Date().toISOString().slice(0,10)}`;
+    if (localStorage.getItem(todayKey)) return; // already dismissed today
+    showAnnouncement(latest);
+  } catch (e) {
+    console.error('Announcement check failed:', e);
+  }
+}
+
+function showAnnouncement(ann) {
+  const colors = ANN_COLORS[ann.color] || ANN_COLORS.blue;
+  const popup = document.getElementById('annPopup');
+  const icon = document.getElementById('annIcon');
+  popup.style.borderColor = colors.accent;
+  icon.style.background = colors.bg;
+  icon.style.border = `1px solid ${colors.border}`;
+  icon.textContent = colors.icon;
+  document.getElementById('annText').textContent = ann.text;
+  const postedDate = ann.postedAt ? new Date(ann.postedAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+  document.getElementById('annPostedBy').textContent = `Posted by ${ann.postedBy || 'Admin'}${postedDate?' · '+postedDate:''}`;
+  const linkEl = document.getElementById('annLink');
+  if (ann.link) {
+    linkEl.href = ann.link;
+    linkEl.textContent = '🔗 ' + ann.link;
+    linkEl.style.display = 'inline-block';
+  } else {
+    linkEl.style.display = 'none';
+  }
+  // Stash the active ID so dismiss knows which to suppress
+  document.getElementById('annPopupBg').dataset.annId = ann.id;
+  document.getElementById('annPopupBg').style.display = 'flex';
+}
+
+function dismissAnnouncement() {
+  const bg = document.getElementById('annPopupBg');
+  const annId = bg.dataset.annId;
+  if (annId) {
+    // Suppress until tomorrow
+    localStorage.setItem(`ann_dismissed_${annId}_${new Date().toISOString().slice(0,10)}`, '1');
+  }
+  bg.style.display = 'none';
+}
+
+async function openAnnAdmin() {
+  if (!curUser || !(curUser.role === 'admin' || curUser.role === 'write')) return;
+  // Pre-fill expiry: 7 days from today by default
+  const def = new Date(); def.setDate(def.getDate() + 7);
+  document.getElementById('annComposeExpiry').value = def.toISOString().slice(0,10);
+  document.getElementById('annComposeText').value = '';
+  document.getElementById('annComposeLink').value = '';
+  document.getElementById('annComposeColor').value = 'blue';
+  document.getElementById('annAdminBg').style.display = 'flex';
+  await renderAnnAdminList();
+}
+
+function closeAnnAdmin() {
+  document.getElementById('annAdminBg').style.display = 'none';
+}
+
+async function renderAnnAdminList() {
+  const listEl = document.getElementById('annAdminList');
+  try {
+    const res = await apiCall('/getAnnouncements', {});
+    const items = res.announcements || [];
+    if (!items.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:14px;color:var(--dm2);font-size:12px;font-style:italic">No active announcements.</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(a => {
+      const colors = ANN_COLORS[a.color] || ANN_COLORS.blue;
+      const expDate = new Date(a.expiresOn + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      const postedDate = a.postedAt ? new Date(a.postedAt).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+      return `<div style="background:${colors.bg};border:1px solid ${colors.border};border-radius:var(--r8);padding:10px 12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--tx);line-height:1.4;margin-bottom:5px;white-space:pre-wrap;word-break:break-word">${a.text.replace(/</g,'&lt;')}</div>
+            ${a.link?`<div style="font-size:11px;color:${colors.accent};margin-bottom:4px;word-break:break-all">🔗 ${a.link.replace(/</g,'&lt;')}</div>`:''}
+            <div style="font-size:10px;color:var(--dm2)">By ${a.postedBy} · Posted ${postedDate} · Expires ${expDate}</div>
+          </div>
+          <button onclick="deleteAnnouncement('${a.id}')" style="background:transparent;border:1px solid var(--rd);border-radius:6px;color:var(--rd);padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0">Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div style="color:var(--rd);text-align:center;padding:10px">Couldn\'t load announcements.</div>';
+  }
+}
+
+async function postAnnouncement() {
+  const text = document.getElementById('annComposeText').value.trim();
+  const color = document.getElementById('annComposeColor').value;
+  const link = document.getElementById('annComposeLink').value.trim();
+  const expiresOn = document.getElementById('annComposeExpiry').value;
+  if (!text) { toast('Message is required'); return; }
+  if (!expiresOn) { toast('Expiry date is required'); return; }
+  try {
+    const res = await apiCall('/addAnnouncement', { text, color, link, expiresOn });
+    if (!res.success) { toast(res.error || 'Failed to post'); return; }
+    toast('Announcement posted');
+    document.getElementById('annComposeText').value = '';
+    document.getElementById('annComposeLink').value = '';
+    await renderAnnAdminList();
+  } catch (e) {
+    toast('Failed to post announcement');
+    console.error(e);
+  }
+}
+
+async function deleteAnnouncement(id) {
+  try {
+    const res = await apiCall('/deleteAnnouncement', { id });
+    if (!res.success) { toast(res.error || 'Failed to remove'); return; }
+    toast('Announcement removed');
+    await renderAnnAdminList();
+  } catch (e) {
+    toast('Failed to remove');
+    console.error(e);
+  }
+}
+
+// ════════════════════════════════════════════
+//  ON-CALL ROTATION
+// ════════════════════════════════════════════
+// 6-week deterministic cycle starting Sat Mar 21, 2026 = Louis.
+// Order: Louis → Christian → Geni → Jeff → Mijail → Alex → (repeat)
+// Each tech is on call for Sat + Sun of one week.
+// The rotation is computed from the anchor — nothing is stored.
+
+const ONCALL_TECHS = ['Louis','Christian','Geni','Jeff','Mijail','Alex'];
+const ONCALL_ANCHOR = new Date(2026, 2, 21); // Sat Mar 21, 2026 = Louis (week 0)
+
+let oncallAnchor = null; // first Saturday of the displayed range
+
+// Given a Saturday date, return which tech is on call that weekend.
+function whoIsOnCall(saturday) {
+  // ms in a week
+  const wkMs = 7 * 24 * 60 * 60 * 1000;
+  // Floor the anchor and the saturday to midnight UTC-naive to avoid DST drift
+  const a = new Date(ONCALL_ANCHOR.getFullYear(), ONCALL_ANCHOR.getMonth(), ONCALL_ANCHOR.getDate());
+  const s = new Date(saturday.getFullYear(), saturday.getMonth(), saturday.getDate());
+  const diffWeeks = Math.round((s - a) / wkMs);
+  let idx = diffWeeks % ONCALL_TECHS.length;
+  if (idx < 0) idx += ONCALL_TECHS.length;
+  return ONCALL_TECHS[idx];
+}
+
+// Return the Saturday of the week containing `d` (using Mon-as-start-of-week,
+// which means Sat of THIS week's Mon-Fri pair, i.e. the very next Saturday
+// after starting Monday). Easier: find Saturday by going forward.
+function getSaturdayOfWeek(d) {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  // 0=Sun, 1=Mon ... 6=Sat
+  const offset = (6 - out.getDay() + 7) % 7;
+  out.setDate(out.getDate() + offset);
+  return out;
+}
+
+function openOncall() {
+  if (!oncallAnchor) {
+    oncallAnchor = getSaturdayOfWeek(new Date());
+  }
+  document.getElementById('oncallBg').style.display = 'flex';
+  renderOncall();
+}
+
+function closeOncall() {
+  document.getElementById('oncallBg').style.display = 'none';
+}
+
+function oncallNav(deltaSixWeeks) {
+  // Step by 6 weeks at a time (one full cycle)
+  if (!oncallAnchor) oncallAnchor = getSaturdayOfWeek(new Date());
+  const out = new Date(oncallAnchor);
+  out.setDate(out.getDate() + (deltaSixWeeks * 6 * 7));
+  oncallAnchor = out;
+  renderOncall();
+}
+
+function oncallGoToday() {
+  oncallAnchor = getSaturdayOfWeek(new Date());
+  renderOncall();
+}
+
+function renderOncall() {
+  const grid = document.getElementById('oncallGrid');
+  const todayStr = fmtDate(new Date());
+  // Show 6 weekends starting from oncallAnchor
+  const weekends = [];
+  for (let i = 0; i < 6; i++) {
+    const sat = new Date(oncallAnchor); sat.setDate(sat.getDate() + i*7);
+    const sun = new Date(sat); sun.setDate(sun.getDate()+1);
+    weekends.push({ sat, sun, tech: whoIsOnCall(sat) });
+  }
+
+  // Label: first → last weekend month range
+  const first = weekends[0].sat;
+  const last  = weekends[5].sun;
+  const sameYear = first.getFullYear() === last.getFullYear();
+  const label = sameYear
+    ? `${MONTHS[first.getMonth()].slice(0,3)} ${first.getDate()} – ${MONTHS[last.getMonth()].slice(0,3)} ${last.getDate()}, ${last.getFullYear()}`
+    : `${MONTHS[first.getMonth()].slice(0,3)} ${first.getDate()}, ${first.getFullYear()} – ${MONTHS[last.getMonth()].slice(0,3)} ${last.getDate()}, ${last.getFullYear()}`;
+  document.getElementById('oncallLabel').textContent = label;
+
+  // Header
+  let html = `<div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;margin-bottom:6px;font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-align:center;padding:0 2px">
+    <div style="text-align:left;padding-left:8px">WEEK</div><div>SATURDAY</div><div>SUNDAY</div>
+  </div>`;
+  weekends.forEach(w => {
+    const tc = TC[w.tech] || '#888';
+    // Some tech colors are dark — pick contrasting text color
+    const darkBgs = ['#006400','#0066FF','#B800FF','#FF00FF','#000080','#8B0000','#191970'];
+    const isDark = darkBgs.includes(tc) || tc.toLowerCase() === '#000000';
+    const txtColor = isDark ? '#fff' : '#000';
+    const isThisWeek = (fmtDate(w.sat) <= todayStr && todayStr <= fmtDate(w.sun));
+    const isPast = fmtDate(w.sun) < todayStr;
+
+    html += `<div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;margin-bottom:6px;${isPast?'opacity:.5;':''}">
+      <div style="background:${tc};color:${txtColor};border-radius:var(--r8);padding:14px 10px;font-weight:800;font-size:14px;text-align:center;border:${isThisWeek?'2px solid var(--ac)':'1px solid '+tc};display:flex;align-items:center;justify-content:center">${w.tech}</div>
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);padding:14px;text-align:center">
+        <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px">SAT</div>
+        <div style="font-size:14px;font-weight:700;color:var(--tx);margin-top:2px">${MONTHS[w.sat.getMonth()].slice(0,3)} ${w.sat.getDate()}</div>
+      </div>
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);padding:14px;text-align:center">
+        <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px">SUN</div>
+        <div style="font-size:14px;font-weight:700;color:var(--tx);margin-top:2px">${MONTHS[w.sun.getMonth()].slice(0,3)} ${w.sun.getDate()}</div>
+      </div>
+    </div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+// ════════════════════════════════════════════
 //  INSTALLATION CALENDAR
 // ════════════════════════════════════════════
 // Admins schedule future installs. Stored in KV (via Worker), date-keyed.
@@ -1992,21 +2350,30 @@ function renderCalendar() {
     : `Read-only · Contact an admin to schedule installs`;
 }
 
+// Start of the WORK week containing `d` (Monday)
+function startOfWorkWeek(d) {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  // getDay(): 0=Sun, 1=Mon, ..., 6=Sat
+  // We want Monday. If Sun (0), go back 6 days; otherwise go back (day - 1).
+  const offset = out.getDay() === 0 ? 6 : out.getDay() - 1;
+  out.setDate(out.getDate() - offset);
+  return out;
+}
+
 function renderCalendarWeek() {
-  const weekStart = startOfWeek(calendarAnchor);
-  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+6);
+  const weekStart = startOfWorkWeek(calendarAnchor); // Monday
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+4); // Friday
   const label = `${MONTHS[weekStart.getMonth()].slice(0,3)} ${weekStart.getDate()} – ${MONTHS[weekEnd.getMonth()].slice(0,3)} ${weekEnd.getDate()}, ${weekEnd.getFullYear()}`;
   document.getElementById('calMonthLabel').textContent = label;
 
   const todayStr = fmtDate(new Date());
   let html = '';
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 5; i++) { // Mon-Fri only
     const d = new Date(weekStart); d.setDate(d.getDate()+i);
     const dateStr = fmtDate(d);
     const installs = calendarInstalls.filter(x => x.date === dateStr);
     const isToday = (dateStr === todayStr);
     const isPast = (dateStr < todayStr);
-    // Anyone can click to view; the popup itself hides add/promote/delete for non-admins
     const clickable = true;
     html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:200px;padding:10px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s">
       <div style="font-size:13px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:6px">${d.getDate()}</div>`;
@@ -2023,30 +2390,37 @@ function renderCalendarMonth() {
   const month = calendarAnchor.getMonth();
   document.getElementById('calMonthLabel').textContent = `${MONTHS[month]} ${year}`;
 
-  // First day of month + how many days
-  const firstDay = new Date(year, month, 1);
-  const firstWeekday = firstDay.getDay(); // 0 = Sun
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Anchor: Monday of the week containing the 1st of the month
+  const firstOfMonth = new Date(year, month, 1);
+  const gridStart = startOfWorkWeek(firstOfMonth);
+  // End: last day of month, then extend to its Friday
+  const lastOfMonth = new Date(year, month + 1, 0);
+  let gridEnd = startOfWorkWeek(lastOfMonth);
+  gridEnd.setDate(gridEnd.getDate() + 4); // Friday of that week
 
   const todayStr = fmtDate(new Date());
 
   let html = '';
-  for (let i = 0; i < firstWeekday; i++) {
-    html += `<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);min-height:84px;opacity:.3"></div>`;
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const installs = calendarInstalls.filter(i => i.date === dateStr);
-    const isToday = (dateStr === todayStr);
-    const isPast = (dateStr < todayStr);
-    // Anyone can click to view; the popup itself hides add/promote/delete for non-admins
-    const clickable = true;
-    html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:84px;padding:6px 7px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s">
-      <div style="font-size:12px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:3px">${d}</div>`;
-    installs.forEach(install => {
-      html += `<div style="background:#8b5cf6;color:#fff;font-size:10px;font-weight:700;padding:3px 5px;border-radius:4px;margin-bottom:3px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${install.name.replace(/"/g,'&quot;')}">${install.name}</div>`;
-    });
-    html += `</div>`;
+  let d = new Date(gridStart);
+  while (d <= gridEnd) {
+    // Iterate Mon-Fri, then skip Sat & Sun
+    for (let i = 0; i < 5; i++) {
+      const dateStr = fmtDate(d);
+      const installs = calendarInstalls.filter(i => i.date === dateStr);
+      const isToday = (dateStr === todayStr);
+      const isPast = (dateStr < todayStr);
+      const outOfMonth = (d.getMonth() !== month);
+      const clickable = true;
+      html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:90px;padding:6px 7px;cursor:${clickable?'pointer':'default'};${outOfMonth?'opacity:.35;':''}${isPast && !outOfMonth?'opacity:.55;':''}transition:background .12s">
+        <div style="font-size:12px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':outOfMonth?'var(--dm2)':'var(--tx)'};margin-bottom:3px">${d.getDate()}</div>`;
+      installs.forEach(install => {
+        html += `<div style="background:#8b5cf6;color:#fff;font-size:10px;font-weight:700;padding:3px 5px;border-radius:4px;margin-bottom:3px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${install.name.replace(/"/g,'&quot;')}">${install.name}</div>`;
+      });
+      html += `</div>`;
+      d.setDate(d.getDate() + 1);
+    }
+    // Skip weekend
+    d.setDate(d.getDate() + 2);
   }
   document.getElementById('calGrid').innerHTML = html;
 }
@@ -2059,8 +2433,10 @@ function openInstallDay(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   const dt = new Date(y, m-1, d);
   const dayLabel = dt.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  const dayOfWeek = dt.getDay(); // 0=Sun, 6=Sat
+  const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
   document.getElementById('installDayTitle').textContent = 'Installation';
-  document.getElementById('installDaySubtitle').textContent = dayLabel;
+  document.getElementById('installDaySubtitle').textContent = dayLabel + (isWeekend ? ' · Weekend (no installs allowed)' : '');
 
   // List existing installs for this day
   const installs = calendarInstalls.filter(i => i.date === dateStr);
@@ -2085,10 +2461,10 @@ function openInstallDay(dateStr) {
     `).join('');
   }
 
-  // Hide add-form + button entirely for read-only users
+  // Hide add-form + button entirely for read-only users OR weekends
   const formEl = document.getElementById('installDayForm');
   const addBtn = document.getElementById('installAddBtn');
-  if (!isAdmin) {
+  if (!isAdmin || isWeekend) {
     formEl.style.display = 'none';
     addBtn.style.display = 'none';
   } else {
