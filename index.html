@@ -1250,9 +1250,8 @@ function rBoard() {
       <span class="tcnt">${tj.length}</span>
     </div>
     <div class="tjobs" data-tech="${tech}">`;
-    let stopOffset = 0;
-    if (!tj.length && !(sv && sv.shop)) h += `<div style="text-align:center;padding:16px;color:var(--dm);font-size:12px">NO TICKETS</div>`;
-    else tj.forEach((j, idx) => { h += jobCard(j, canWrite, idx + 1 + stopOffset, tc); });
+    if (!tj.length) h += `<div style="text-align:center;padding:16px;color:var(--dm);font-size:12px">NO TICKETS</div>`;
+    else tj.forEach((j, idx) => { h += jobCard(j, canWrite, idx + 1, tc); });
     h += `</div></div>`;
   });
   document.getElementById('board').innerHTML = h;
