@@ -396,18 +396,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div id="tvMapDateTime" style="display:none;margin:12px 0 16px;padding:14px 18px;font-size:18px;font-weight:800;color:#ff6a00;letter-spacing:.5px;background:rgba(255,106,0,.08);border:1px solid rgba(255,106,0,.35);border-radius:var(--r12);text-align:center;text-shadow:0 0 14px rgba(255,106,0,.4)"></div>
     <div class="tv-tickets" id="tvTickets"></div>
 
-    <!-- Jeff-only inline installation calendar (between tickets and Drive folders) -->
-    <div id="tvCalSec" style="display:none;margin:20px 0 0;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r12);padding:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
-        <div style="width:32px;height:32px;border-radius:10px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">📅</div>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:var(--tx)">Installation Calendar</div>
-          <div style="font-size:11px;color:var(--dm2);margin-top:1px">Your upcoming installs</div>
-        </div>
-      </div>
-      <div id="tvCalContent" style="font-size:12px;color:var(--dm2)">Loading…</div>
-    </div>
-
     <!-- Google Drive folder buttons (between tickets and vendor notes) -->
     <div class="drive-sec" id="tvDriveSec" style="display:none">
       <button class="drive-sec-title" id="tvDriveToggle" type="button" onclick="toggleDriveSection()" aria-expanded="false" aria-controls="tvDriveGrid">
@@ -997,6 +985,15 @@ function startDash(user) {
     document.getElementById('adminView').style.display = 'block';
     document.getElementById('techView').style.display  = 'none';
   }
+
+  // Calendar button visibility: admins/write always see it, plus Jeff and Landi
+  // (so they can view their installation schedule). Other techs don't see it.
+  const calBtn = document.getElementById('calendarBtn');
+  if (calBtn) {
+    const showCal = canWrite || (isTech && (user.tech === 'Jeff' || user.tech === 'Landi'));
+    calBtn.style.display = showCal ? 'inline-block' : 'none';
+  }
+
   // Load Leaflet lazily, then fetch data (map won't block login)
   loadLeaflet(() => { loadData(); });
   startHeartbeat();
@@ -2009,8 +2006,8 @@ function renderCalendarWeek() {
     const installs = calendarInstalls.filter(x => x.date === dateStr);
     const isToday = (dateStr === todayStr);
     const isPast = (dateStr < todayStr);
-    const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
-    const clickable = isAdmin;
+    // Anyone can click to view; the popup itself hides add/promote/delete for non-admins
+    const clickable = true;
     html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:200px;padding:10px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s">
       <div style="font-size:13px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:6px">${d.getDate()}</div>`;
     installs.forEach(install => {
@@ -2042,8 +2039,8 @@ function renderCalendarMonth() {
     const installs = calendarInstalls.filter(i => i.date === dateStr);
     const isToday = (dateStr === todayStr);
     const isPast = (dateStr < todayStr);
-    const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
-    const clickable = isAdmin;
+    // Anyone can click to view; the popup itself hides add/promote/delete for non-admins
+    const clickable = true;
     html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:84px;padding:6px 7px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s">
       <div style="font-size:12px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:3px">${d}</div>`;
     installs.forEach(install => {
@@ -2055,7 +2052,8 @@ function renderCalendarMonth() {
 }
 
 function openInstallDay(dateStr) {
-  if (!curUser || (curUser.role !== 'admin' && curUser.role !== 'write')) return;
+  if (!curUser) return;
+  const isAdmin = (curUser.role === 'admin' || curUser.role === 'write');
   installDayDate = dateStr;
   // Format date nicely for display
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -2068,7 +2066,7 @@ function openInstallDay(dateStr) {
   const installs = calendarInstalls.filter(i => i.date === dateStr);
   const listEl = document.getElementById('installDayList');
   if (installs.length === 0) {
-    listEl.innerHTML = '';
+    listEl.innerHTML = isAdmin ? '' : '<div style="text-align:center;padding:14px;color:var(--dm2);font-size:12px;font-style:italic">No installs scheduled for this day.</div>';
   } else {
     listEl.innerHTML = installs.map(ins => `
       <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);padding:10px 12px;margin-bottom:8px">
@@ -2078,38 +2076,45 @@ function openInstallDay(dateStr) {
             ${ins.address?`<div style="font-size:11px;color:var(--dm2);margin-bottom:3px;word-break:break-word">📍 ${ins.address.replace(/</g,'&lt;')}</div>`:''}
             ${ins.notes?`<div style="font-size:11px;color:#f97316;font-weight:600;line-height:1.4;word-break:break-word">${ins.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`:''}
           </div>
-          <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+          ${isAdmin ? `<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
             <button onclick="promoteInstall('${ins.date}', ${ins.slot})" style="background:#10b981;border:none;border-radius:6px;color:#fff;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap" title="Move this install to Jeff's column now">→ Promote</button>
             <button onclick="deleteInstall('${ins.date}', ${ins.slot})" style="background:transparent;border:1px solid var(--rd);border-radius:6px;color:var(--rd);padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">Delete</button>
-          </div>
+          </div>`:''}
         </div>
       </div>
     `).join('');
   }
 
-  // Show/hide add form depending on capacity
+  // Hide add-form + button entirely for read-only users
   const formEl = document.getElementById('installDayForm');
   const addBtn = document.getElementById('installAddBtn');
-  if (installs.length >= 2) {
-    formEl.style.opacity = '.4';
-    formEl.style.pointerEvents = 'none';
-    addBtn.disabled = true;
-    addBtn.style.opacity = '.4';
-    addBtn.style.cursor = 'not-allowed';
-    addBtn.textContent = 'Day Full (max 2)';
+  if (!isAdmin) {
+    formEl.style.display = 'none';
+    addBtn.style.display = 'none';
   } else {
-    formEl.style.opacity = '1';
-    formEl.style.pointerEvents = 'auto';
-    addBtn.disabled = false;
-    addBtn.style.opacity = '1';
-    addBtn.style.cursor = 'pointer';
-    addBtn.textContent = 'Add Install';
+    formEl.style.display = '';
+    addBtn.style.display = '';
+    // Show/hide add form depending on capacity
+    if (installs.length >= 2) {
+      formEl.style.opacity = '.4';
+      formEl.style.pointerEvents = 'none';
+      addBtn.disabled = true;
+      addBtn.style.opacity = '.4';
+      addBtn.style.cursor = 'not-allowed';
+      addBtn.textContent = 'Day Full (max 2)';
+    } else {
+      formEl.style.opacity = '1';
+      formEl.style.pointerEvents = 'auto';
+      addBtn.disabled = false;
+      addBtn.style.opacity = '1';
+      addBtn.style.cursor = 'pointer';
+      addBtn.textContent = 'Add Install';
+    }
+    // Clear input fields
+    document.getElementById('installNameInput').value = '';
+    document.getElementById('installAddrInput').value = '';
+    document.getElementById('installNotesInput').value = '';
   }
-
-  // Clear input fields
-  document.getElementById('installNameInput').value = '';
-  document.getElementById('installAddrInput').value = '';
-  document.getElementById('installNotesInput').value = '';
 
   document.getElementById('installDayBg').style.display = 'flex';
 }
@@ -2178,60 +2183,6 @@ async function promoteInstall(date, slot) {
   } catch (e) {
     toast('Failed to promote install');
     console.error(e);
-  }
-}
-
-// ════════════════════════════════════════════
-//  TECH VIEW INLINE CALENDAR (Jeff only)
-// ════════════════════════════════════════════
-// Shows next 14 days of scheduled installs as a compact list, read-only.
-async function loadTechCalendar() {
-  const sec = document.getElementById('tvCalSec');
-  if (!sec) return;
-  // Only show for Jeff
-  if (!curUser || curUser.tech !== 'Jeff') {
-    sec.style.display = 'none';
-    return;
-  }
-  sec.style.display = '';
-  const content = document.getElementById('tvCalContent');
-  try {
-    const res = await apiCall('/getInstalls', {});
-    const all = res.installs || [];
-    // Filter to today + next 14 days
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-    const cutoff = new Date(today); cutoff.setDate(cutoff.getDate()+14);
-    const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
-    const upcoming = all.filter(i => i.date >= todayStr && i.date <= cutoffStr);
-    if (!upcoming.length) {
-      content.innerHTML = `<div style="text-align:center;padding:20px;font-style:italic">No installs scheduled in the next 14 days.</div>`;
-      return;
-    }
-    // Group by date for cleaner display
-    const byDate = {};
-    upcoming.forEach(i => { (byDate[i.date] ||= []).push(i); });
-    let html = '';
-    Object.keys(byDate).sort().forEach(date => {
-      const [y, m, d] = date.split('-').map(Number);
-      const dt = new Date(y, m-1, d);
-      const dayLabel = dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
-      const isToday = (date === todayStr);
-      html += `<div style="margin-bottom:10px">
-        <div style="font-size:11px;font-weight:800;color:${isToday?'#3b82f6':'var(--dm2)'};letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">${isToday?'TODAY · ':''}${dayLabel}</div>`;
-      byDate[date].forEach(ins => {
-        html += `<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);padding:10px 12px;margin-bottom:5px">
-          <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:3px;word-break:break-word">${ins.name.replace(/</g,'&lt;')}</div>
-          ${ins.address?`<div style="font-size:11px;color:var(--dm2);margin-bottom:3px;word-break:break-word">📍 ${ins.address.replace(/</g,'&lt;')}</div>`:''}
-          ${ins.notes?`<div style="font-size:12px;color:#f97316;font-weight:700;line-height:1.4;word-break:break-word">${ins.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`:''}
-        </div>`;
-      });
-      html += `</div>`;
-    });
-    content.innerHTML = html;
-  } catch (e) {
-    content.innerHTML = `<div style="text-align:center;padding:20px;color:var(--rd)">Couldn't load calendar.</div>`;
-    console.error('Tech calendar load failed:', e);
   }
 }
 
@@ -2514,8 +2465,6 @@ async function renderTechView(withMap=true) {
   const tech = curUser.tech;
   // Kick off Drive folder load in parallel (no await — don't block the render)
   loadDriveFolders();
-  // Jeff-only: show inline installation calendar with upcoming installs
-  loadTechCalendar();
   const tc = TC[tech]||'#888';
   const dark=['#006400','#0066FF','#B800FF','#FF00FF'].includes(tc);
   const tvTickets = document.getElementById('tvTickets');
