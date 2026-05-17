@@ -395,6 +395,19 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <!-- Bright-orange date/time, sits below the map -->
     <div id="tvMapDateTime" style="display:none;margin:12px 0 16px;padding:14px 18px;font-size:18px;font-weight:800;color:#ff6a00;letter-spacing:.5px;background:rgba(255,106,0,.08);border:1px solid rgba(255,106,0,.35);border-radius:var(--r12);text-align:center;text-shadow:0 0 14px rgba(255,106,0,.4)"></div>
     <div class="tv-tickets" id="tvTickets"></div>
+
+    <!-- Jeff-only inline installation calendar (between tickets and Drive folders) -->
+    <div id="tvCalSec" style="display:none;margin:20px 0 0;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r12);padding:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
+        <div style="width:32px;height:32px;border-radius:10px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">📅</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--tx)">Installation Calendar</div>
+          <div style="font-size:11px;color:var(--dm2);margin-top:1px">Your upcoming installs</div>
+        </div>
+      </div>
+      <div id="tvCalContent" style="font-size:12px;color:var(--dm2)">Loading…</div>
+    </div>
+
     <!-- Google Drive folder buttons (between tickets and vendor notes) -->
     <div class="drive-sec" id="tvDriveSec" style="display:none">
       <button class="drive-sec-title" id="tvDriveToggle" type="button" onclick="toggleDriveSection()" aria-expanded="false" aria-controls="tvDriveGrid">
@@ -490,12 +503,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <button onclick="closeCalendar()" style="background:none;border:none;color:var(--dm2);font-size:24px;cursor:pointer;padding:4px 10px;border-radius:var(--r8);transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">✕</button>
     </div>
 
-    <!-- Month nav -->
-    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px">
-      <button onclick="calNavMonth(-1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">◀</button>
-      <div id="calMonthLabel" style="font-size:18px;font-weight:700;min-width:200px;text-align:center;color:var(--tx)">—</div>
-      <button onclick="calNavMonth(1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">▶</button>
+    <!-- Month nav + view toggle -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+      <button onclick="calNavStep(-1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">◀</button>
+      <div id="calMonthLabel" style="font-size:18px;font-weight:700;min-width:240px;text-align:center;color:var(--tx)">—</div>
+      <button onclick="calNavStep(1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">▶</button>
       <button onclick="calGoToday()" style="background:var(--ac);border:none;border-radius:var(--r8);color:#fff;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700;margin-left:10px">TODAY</button>
+      <div style="display:flex;gap:0;border:1px solid var(--bd);border-radius:var(--r8);overflow:hidden;margin-left:10px">
+        <button id="calBtnWeek" onclick="calSetMode('week')" style="background:var(--ac);border:none;color:#fff;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700">WEEK</button>
+        <button id="calBtnMonth" onclick="calSetMode('month')" style="background:var(--sf2);border:none;color:var(--tx);padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700">MONTH</button>
+      </div>
     </div>
 
     <!-- Day headers -->
@@ -1902,19 +1919,25 @@ document.getElementById('shopModalBg').addEventListener('click', function(e) {
 // Techs see the calendar read-only.
 
 let calendarInstalls = [];        // all installs loaded from Worker
-let calendarViewYear = null;       // currently displayed year
-let calendarViewMonth = null;      // currently displayed month (0-11)
+let calendarMode = 'week';         // 'week' (default) or 'month'
+let calendarAnchor = null;         // a Date that anchors the current view (any day in the week/month being shown)
 let installDayDate = null;         // YYYY-MM-DD currently being edited
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+// Helpers to format / manipulate dates as YYYY-MM-DD strings
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// Start of the week containing `d` (Sunday)
+function startOfWeek(d) {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  out.setDate(out.getDate() - out.getDay());
+  return out;
+}
+
 async function openCalendar() {
-  // Set initial view to current month
-  const now = new Date();
-  if (calendarViewYear === null) {
-    calendarViewYear  = now.getFullYear();
-    calendarViewMonth = now.getMonth();
-  }
+  if (!calendarAnchor) calendarAnchor = new Date();
   document.getElementById('calendarBg').style.display = 'flex';
   await loadCalendarData();
   renderCalendar();
@@ -1934,59 +1957,101 @@ async function loadCalendarData() {
   }
 }
 
-function calNavMonth(delta) {
-  calendarViewMonth += delta;
-  if (calendarViewMonth < 0)  { calendarViewMonth = 11; calendarViewYear--; }
-  if (calendarViewMonth > 11) { calendarViewMonth = 0;  calendarViewYear++; }
+function calSetMode(mode) {
+  calendarMode = mode;
+  document.getElementById('calBtnWeek').style.background  = mode === 'week'  ? 'var(--ac)' : 'var(--sf2)';
+  document.getElementById('calBtnWeek').style.color       = mode === 'week'  ? '#fff' : 'var(--tx)';
+  document.getElementById('calBtnMonth').style.background = mode === 'month' ? 'var(--ac)' : 'var(--sf2)';
+  document.getElementById('calBtnMonth').style.color      = mode === 'month' ? '#fff' : 'var(--tx)';
+  renderCalendar();
+}
+
+function calNavStep(delta) {
+  if (!calendarAnchor) calendarAnchor = new Date();
+  const d = new Date(calendarAnchor);
+  if (calendarMode === 'week') {
+    d.setDate(d.getDate() + (delta * 7));
+  } else {
+    d.setMonth(d.getMonth() + delta);
+  }
+  calendarAnchor = d;
   renderCalendar();
 }
 
 function calGoToday() {
-  const now = new Date();
-  calendarViewYear  = now.getFullYear();
-  calendarViewMonth = now.getMonth();
+  calendarAnchor = new Date();
   renderCalendar();
 }
 
 function renderCalendar() {
-  document.getElementById('calMonthLabel').textContent = `${MONTHS[calendarViewMonth]} ${calendarViewYear}`;
-  const grid = document.getElementById('calGrid');
-
-  // First day of month + how many days
-  const firstDay = new Date(calendarViewYear, calendarViewMonth, 1);
-  const firstWeekday = firstDay.getDay(); // 0 = Sun
-  const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
-
-  // Today's date for "current" highlight
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-
-  // Build cells: empty cells before first day, then days
-  let html = '';
-  for (let i = 0; i < firstWeekday; i++) {
-    html += `<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);min-height:84px;opacity:.3"></div>`;
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${calendarViewYear}-${String(calendarViewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const installs = calendarInstalls.filter(i => i.date === dateStr);
-    const isToday = (dateStr === todayStr);
-    const isPast = (dateStr < todayStr);
-    const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
-    const clickable = isAdmin;
-    html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:84px;padding:6px 7px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s,transform .08s" ${clickable?'onmouseover="this.style.background=\'rgba(139,92,246,.08)\'" onmouseout="this.style.background=\''+(isToday?'rgba(59,130,246,.12)':'var(--sf2)')+'\'"':''}>
-      <div style="font-size:12px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:3px">${d}</div>`;
-    installs.forEach(install => {
-      html += `<div style="background:#8b5cf6;color:#fff;font-size:10px;font-weight:700;padding:3px 5px;border-radius:4px;margin-bottom:3px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${install.name.replace(/"/g,'&quot;')}">${install.name}</div>`;
-    });
-    html += `</div>`;
-  }
-  grid.innerHTML = html;
+  if (!calendarAnchor) calendarAnchor = new Date();
+  if (calendarMode === 'week') renderCalendarWeek();
+  else                          renderCalendarMonth();
 
   // Footer hint
   const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
   document.getElementById('calFooter').textContent = isAdmin
     ? `Click any day to schedule an install (max 2/day) · Click an existing install to manage or promote it`
     : `Read-only · Contact an admin to schedule installs`;
+}
+
+function renderCalendarWeek() {
+  const weekStart = startOfWeek(calendarAnchor);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+6);
+  const label = `${MONTHS[weekStart.getMonth()].slice(0,3)} ${weekStart.getDate()} – ${MONTHS[weekEnd.getMonth()].slice(0,3)} ${weekEnd.getDate()}, ${weekEnd.getFullYear()}`;
+  document.getElementById('calMonthLabel').textContent = label;
+
+  const todayStr = fmtDate(new Date());
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart); d.setDate(d.getDate()+i);
+    const dateStr = fmtDate(d);
+    const installs = calendarInstalls.filter(x => x.date === dateStr);
+    const isToday = (dateStr === todayStr);
+    const isPast = (dateStr < todayStr);
+    const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
+    const clickable = isAdmin;
+    html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:200px;padding:10px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s">
+      <div style="font-size:13px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:6px">${d.getDate()}</div>`;
+    installs.forEach(install => {
+      html += `<div style="background:#8b5cf6;color:#fff;font-size:11px;font-weight:700;padding:5px 7px;border-radius:5px;margin-bottom:5px;line-height:1.3;word-break:break-word" title="${install.name.replace(/"/g,'&quot;')}">${install.name}${install.notes?`<div style='font-weight:500;font-size:10px;margin-top:3px;opacity:.92;line-height:1.35'>${install.notes.replace(/</g,'&lt;').slice(0,80)}${install.notes.length>80?'…':''}</div>`:''}</div>`;
+    });
+    html += `</div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function renderCalendarMonth() {
+  const year = calendarAnchor.getFullYear();
+  const month = calendarAnchor.getMonth();
+  document.getElementById('calMonthLabel').textContent = `${MONTHS[month]} ${year}`;
+
+  // First day of month + how many days
+  const firstDay = new Date(year, month, 1);
+  const firstWeekday = firstDay.getDay(); // 0 = Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const todayStr = fmtDate(new Date());
+
+  let html = '';
+  for (let i = 0; i < firstWeekday; i++) {
+    html += `<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);min-height:84px;opacity:.3"></div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const installs = calendarInstalls.filter(i => i.date === dateStr);
+    const isToday = (dateStr === todayStr);
+    const isPast = (dateStr < todayStr);
+    const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
+    const clickable = isAdmin;
+    html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:84px;padding:6px 7px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s">
+      <div style="font-size:12px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:3px">${d}</div>`;
+    installs.forEach(install => {
+      html += `<div style="background:#8b5cf6;color:#fff;font-size:10px;font-weight:700;padding:3px 5px;border-radius:4px;margin-bottom:3px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${install.name.replace(/"/g,'&quot;')}">${install.name}</div>`;
+    });
+    html += `</div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
 }
 
 function openInstallDay(dateStr) {
@@ -2070,9 +2135,8 @@ async function submitInstall() {
       return;
     }
     toast('Install scheduled');
-    // Reload and rerender
+    closeInstallDay();
     await loadCalendarData();
-    openInstallDay(installDayDate); // re-open same day to show new entry
     renderCalendar();
   } catch (e) {
     toast('Failed to add install');
@@ -2099,7 +2163,6 @@ async function deleteInstall(date, slot) {
 }
 
 async function promoteInstall(date, slot) {
-  if (!confirm("Promote this install to Jeff's column now?")) return;
   try {
     const res = await apiCall('/promoteInstall', { date, slot });
     if (!res.success) {
@@ -2115,6 +2178,60 @@ async function promoteInstall(date, slot) {
   } catch (e) {
     toast('Failed to promote install');
     console.error(e);
+  }
+}
+
+// ════════════════════════════════════════════
+//  TECH VIEW INLINE CALENDAR (Jeff only)
+// ════════════════════════════════════════════
+// Shows next 14 days of scheduled installs as a compact list, read-only.
+async function loadTechCalendar() {
+  const sec = document.getElementById('tvCalSec');
+  if (!sec) return;
+  // Only show for Jeff
+  if (!curUser || curUser.tech !== 'Jeff') {
+    sec.style.display = 'none';
+    return;
+  }
+  sec.style.display = '';
+  const content = document.getElementById('tvCalContent');
+  try {
+    const res = await apiCall('/getInstalls', {});
+    const all = res.installs || [];
+    // Filter to today + next 14 days
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const cutoff = new Date(today); cutoff.setDate(cutoff.getDate()+14);
+    const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
+    const upcoming = all.filter(i => i.date >= todayStr && i.date <= cutoffStr);
+    if (!upcoming.length) {
+      content.innerHTML = `<div style="text-align:center;padding:20px;font-style:italic">No installs scheduled in the next 14 days.</div>`;
+      return;
+    }
+    // Group by date for cleaner display
+    const byDate = {};
+    upcoming.forEach(i => { (byDate[i.date] ||= []).push(i); });
+    let html = '';
+    Object.keys(byDate).sort().forEach(date => {
+      const [y, m, d] = date.split('-').map(Number);
+      const dt = new Date(y, m-1, d);
+      const dayLabel = dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+      const isToday = (date === todayStr);
+      html += `<div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:800;color:${isToday?'#3b82f6':'var(--dm2)'};letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">${isToday?'TODAY · ':''}${dayLabel}</div>`;
+      byDate[date].forEach(ins => {
+        html += `<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);padding:10px 12px;margin-bottom:5px">
+          <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:3px;word-break:break-word">${ins.name.replace(/</g,'&lt;')}</div>
+          ${ins.address?`<div style="font-size:11px;color:var(--dm2);margin-bottom:3px;word-break:break-word">📍 ${ins.address.replace(/</g,'&lt;')}</div>`:''}
+          ${ins.notes?`<div style="font-size:12px;color:#f97316;font-weight:700;line-height:1.4;word-break:break-word">${ins.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`:''}
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    content.innerHTML = html;
+  } catch (e) {
+    content.innerHTML = `<div style="text-align:center;padding:20px;color:var(--rd)">Couldn't load calendar.</div>`;
+    console.error('Tech calendar load failed:', e);
   }
 }
 
@@ -2397,6 +2514,8 @@ async function renderTechView(withMap=true) {
   const tech = curUser.tech;
   // Kick off Drive folder load in parallel (no await — don't block the render)
   loadDriveFolders();
+  // Jeff-only: show inline installation calendar with upcoming installs
+  loadTechCalendar();
   const tc = TC[tech]||'#888';
   const dark=['#006400','#0066FF','#B800FF','#FF00FF'].includes(tc);
   const tvTickets = document.getElementById('tvTickets');
