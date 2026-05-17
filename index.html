@@ -1468,7 +1468,10 @@ function openDD(id, el) {
   const r = el.getBoundingClientRect();
   let l = r.right-170, t = r.bottom+6;
   if (l<6) l=6; if (t+260>window.innerHeight) t=Math.max(6,r.top-260);
-  document.getElementById('ddp').innerHTML = ['green','orange','yellow','blue','inst','pink','john','close','none'].map(c=>{
+  // Dropdown choices: Close Out / Installation / Untagged removed per Jon-Pol.
+  // Existing tickets with those statuses still work — they just can't be
+  // manually set from the UI anymore. 'none' is still the default for blank cells.
+  document.getElementById('ddp').innerHTML = ['green','orange','yellow','blue','pink','john'].map(c=>{
     const s=c===j.color;
     return `<div class="ddi${s?' sel':''}" style="${s?'background:'+CS[c].s:''}" onclick="chgColor(${id},'${c}')"><span class="ddd" style="background:${CS[c].f}"></span>${SL[c]}</div>`;
   }).join('');
@@ -1690,7 +1693,8 @@ function copyVendorNote(btn, idx) {
   const notes = window.__vendorNotes || [];
   const n = notes[idx];
   if (!n) return;
-  const text = n.header + '\n' + n.body;
+  // Copy only the body — header (e.g., "Synergy Walgreens") is excluded
+  const text = n.body;
   const showOk = () => {
     const original = btn.innerHTML;
     btn.classList.add('ok');
