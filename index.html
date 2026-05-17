@@ -1139,12 +1139,20 @@ async function loadData() {
 }
 
 function parseJob(raw) {
-  const val = String(raw).trim();
-  const parts = val.split(',');
-  let name = val, addr = '';
-  if (parts.length >= 3) { name = parts[0].trim(); addr = parts.slice(1).join(',').trim(); }
-  if (!addr) addr = LOC[name] || LOC[val] || '';
-  return { name, addr };
+  // Canonical format: "Site Name, Street, City, State ZIP"
+  // Site names never contain commas, so the FIRST comma is the boundary.
+  // This matches the Worker's parseJobCell exactly.
+  const val = String(raw || '').trim();
+  if (!val) return { name: '', addr: '' };
+  const firstComma = val.indexOf(',');
+  if (firstComma === -1) {
+    // No comma — fall back to legacy name-only lookup
+    return { name: val, addr: LOC[val] || '' };
+  }
+  return {
+    name: val.slice(0, firstComma).trim(),
+    addr: val.slice(firstComma + 1).trim(),
+  };
 }
 
 // ════════════════════════════════════════════
