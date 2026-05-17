@@ -358,6 +358,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="toolbar">
       <input type="text" class="sbox" id="sbox" placeholder="Search jobs or techs...">
       <button id="fullSchedBtn" onclick="backToTechView()" style="display:none;background:var(--ac);border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">← My View</button>
+      <button id="calendarBtn" onclick="openCalendar()" style="background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">📅 Installation Calendar</button>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -472,6 +473,71 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <button class="mbtn-ok" id="shopOkBtn" onclick="confirmShop()" style="display:none;background:var(--ac);border:none;border-radius:var(--r8);color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;padding:9px 22px;cursor:pointer;transition:all .15s">
         Add Ticket ✓
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── INSTALLATION CALENDAR MODAL ── -->
+<div class="modal-bg" id="calendarBg" onclick="if(event.target===this)closeCalendar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 12px">
+  <div style="max-width:1000px;width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r16);padding:24px;box-shadow:0 32px 80px rgba(0,0,0,.7)">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;border-bottom:1px solid var(--bd);padding-bottom:16px">
+      <div style="width:42px;height:42px;border-radius:12px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px">📅</div>
+      <div style="flex:1">
+        <h3 style="font-size:18px;margin:0;color:var(--tx);font-weight:700">Installation Calendar</h3>
+        <div style="font-size:12px;color:var(--dm2);margin-top:2px">Pre-scheduled installations · Manual promotion to Jeff's column</div>
+      </div>
+      <button onclick="closeCalendar()" style="background:none;border:none;color:var(--dm2);font-size:24px;cursor:pointer;padding:4px 10px;border-radius:var(--r8);transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">✕</button>
+    </div>
+
+    <!-- Month nav -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px">
+      <button onclick="calNavMonth(-1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">◀</button>
+      <div id="calMonthLabel" style="font-size:18px;font-weight:700;min-width:200px;text-align:center;color:var(--tx)">—</div>
+      <button onclick="calNavMonth(1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">▶</button>
+      <button onclick="calGoToday()" style="background:var(--ac);border:none;border-radius:var(--r8);color:#fff;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700;margin-left:10px">TODAY</button>
+    </div>
+
+    <!-- Day headers -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-align:center;padding:0 2px">
+      <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+    </div>
+
+    <!-- Calendar grid -->
+    <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;min-height:380px"></div>
+
+    <!-- Footer info -->
+    <div id="calFooter" style="margin-top:14px;font-size:11px;color:var(--dm2);text-align:center;line-height:1.6"></div>
+  </div>
+</div>
+
+<!-- ── ADD/EDIT INSTALL DAY POPUP ── -->
+<div class="modal-bg" id="installDayBg" onclick="if(event.target===this)closeInstallDay()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9100;align-items:center;justify-content:center;padding:12px">
+  <div style="max-width:480px;width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r16);padding:22px;box-shadow:0 32px 80px rgba(0,0,0,.7)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0">📅</div>
+      <div style="flex:1">
+        <h3 id="installDayTitle" style="font-size:16px;margin:0">Schedule Installation</h3>
+        <div id="installDaySubtitle" style="font-size:11px;color:var(--dm2);margin-top:2px">—</div>
+      </div>
+    </div>
+
+    <!-- Existing installs for this day -->
+    <div id="installDayList" style="margin-bottom:16px"></div>
+
+    <!-- Add new install form -->
+    <div id="installDayForm">
+      <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Job Name</div>
+      <input id="installNameInput" type="text" placeholder="e.g. Whole Foods 10529 - Compactor Install" style="width:100%;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r8);padding:10px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;margin-bottom:10px;box-sizing:border-box">
+      <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Address</div>
+      <input id="installAddrInput" type="text" placeholder="e.g. 21105 St Andrews Blvd, Boca Raton, FL 33486" style="width:100%;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r8);padding:10px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;margin-bottom:10px;box-sizing:border-box">
+      <div style="font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Notes <span style="font-weight:500;color:var(--dm);text-transform:none;letter-spacing:0">(optional)</span></div>
+      <textarea id="installNotesInput" placeholder="Parts needed, customer contact, special instructions..." style="width:100%;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r8);padding:10px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;resize:vertical;outline:none;min-height:72px;line-height:1.5;box-sizing:border-box"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button onclick="closeInstallDay()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600">Close</button>
+      <button id="installAddBtn" onclick="submitInstall()" style="background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;padding:9px 22px;cursor:pointer;font-size:13px;font-weight:700">Add Install</button>
     </div>
   </div>
 </div>
@@ -748,9 +814,6 @@ let shopModalTech = null, shopModalSelected = null;
   updateAdminMapTag();
   setInterval(updateAdminMapTag, 1000);
 
-  // Load saved shop visits from localStorage (overridden by sheet on first loadData)
-  try { shopVisits = JSON.parse(localStorage.getItem('wrs_shops')||'{}'); } catch(e) { shopVisits={}; }
-
   // Auto-login: validate saved token with Worker; restore session if still valid
   try {
     const savedUser  = localStorage.getItem('wrs_user');
@@ -1003,67 +1066,12 @@ function setSyncState(state) {
 async function loadData() {
   setSyncState('syncing');
   try {
-    // ── Fetch jobs + vendor notes (rows 6-23), NO shop rows ──
+    // ── Fetch jobs + vendor notes (rows 6-23) ──
     // Range A6:K23 → sheetData index 0 = row 6
     const fmtResp = await sheetsGetFormatting(`Sheet1!A6:K23`);
     const sheetData = fmtResp.sheets?.[0]?.data?.[0]?.rowData || [];
 
-    // ── Fetch shop rows 25-26 separately (values only, no formatting needed for row 26) ──
-    // Row 25 = shop ticket (green cell), Row 26 = SHOPNOTE text
-    const shopFmt  = await sheetsGetFormatting(`Sheet1!A25:K25`);
-    const shopData = shopFmt.sheets?.[0]?.data?.[0]?.rowData?.[0]?.values || [];
-    const noteResp = await sheetsGet(`Sheet1!A26:K26`);
-    const noteRow  = noteResp.values?.[0] || [];
-
-    // ── Read shop tickets from row 25 ──
-    // Sheet is source of truth: rebuild the set of techs with shops from row 25,
-    // and only render shop-as-job cards for valid recognized shops (North/South).
-    // Anything else in row 25 (stray text, drag accidents) does not become a shop badge.
     jobs = [];
-    const sheetShopTechs = new Set();
-    shopData.forEach((cell, ci) => {
-      const v = cell?.userEnteredValue?.stringValue || '';
-      const bgRaw = cell?.userEnteredFormat?.backgroundColor || null;
-      const hex   = bgRaw ? rgbToHex(bgRaw) : '#ffffff';
-      if (v && v.trim() && (HEX_TO_STATUS[hex]||'none') === 'green') {
-        const parsed = parseJob(v);
-        // Only treat as a shop if name matches a known shop location.
-        // This prevents stray content in row 25 from corrupting shopVisits.
-        if (!SHOP_LOCATIONS[parsed.name]) return;
-        const shopKnownAddr = SHOP_LOCATIONS[parsed.name].address || '';
-        const addrKey = parsed.addr || shopKnownAddr;
-        const shopCoords = SHOP_LOCATIONS[parsed.name];
-        const tech = TECHS[ci] || 'Unknown';
-        const j = { id: -(ci+1), tech, job: parsed.name, address: addrKey, color: 'green', row: 25, col: ci+1,
-          isShop: true,
-          lat: shopCoords?.lat || (addrKey && geoCache[addrKey]?.lat) || null,
-          lng: shopCoords?.lng || (addrKey && geoCache[addrKey]?.lng) || null };
-        if (shopCoords?.lat) { geoCache[addrKey] = { lat: shopCoords.lat, lng: shopCoords.lng }; }
-        jobs.push(j);
-        sheetShopTechs.add(tech);
-        // Sheet is source of truth — overwrite cached shop name (don't just fill if empty).
-        shopVisits[tech] = Object.assign(shopVisits[tech]||{}, { shop: parsed.name });
-      }
-    });
-    // Drop stale shopVisits entries for any tech whose row 25 cell is empty/non-green.
-    // Without this, a once-set shop badge persists in localStorage forever.
-    Object.keys(shopVisits).forEach(tech => {
-      if (!sheetShopTechs.has(tech)) {
-        delete shopVisits[tech];
-      }
-    });
-    localStorage.setItem('wrs_shops', JSON.stringify(shopVisits));
-
-    // ── Read shop notes from row 26 ──
-    noteRow.forEach((v, ci) => {
-      if (typeof v === 'string' && v.startsWith('SHOPNOTE:')) {
-        const tech = TECHS[ci];
-        if (tech) {
-          const notes = v.replace('SHOPNOTE:', '');
-          shopVisits[tech] = Object.assign(shopVisits[tech]||{}, { notes });
-        }
-      }
-    });
 
     // ── Read job tickets (rows 6-18, sheetData index 0-12) ──
     let id = 1;
@@ -1219,37 +1227,10 @@ function rBoard() {
   let h = '';
   const visibleTechs = (isTech && !viewingAll && curUser?.tech) ? [curUser.tech] : TECHS;
   visibleTechs.forEach(tech => {
-    // Exclude row-25 shop entries from the regular ticket list — they're
-    // rendered as a standalone shop card from shopVisits[tech] further down.
-    // Without this filter, the shop entry from row 25 leaks into tj and gets
-    // re-rendered as a regular green job card (and worse, gets swept up by
-    // autoSortTech which rewrites it into rows 6–18 with a hyphen format).
-    const tj = fj.filter(j => j.tech===tech && !j.isShop);
+    const tj = fj.filter(j => j.tech===tech);
     if (search && !tj.length) return;
     const tc = TC[tech]||'#888';
-    const sv = shopVisits[tech];
 
-    // ── If a shop visit exists, look for a matching draggable job ticket
-    // (same shop name or same shop address) and attach the notes to that
-    // card instead of rendering a separate standalone shop card. This
-    // prevents the "double ticket" issue Jon-Pol reported.
-    let mergedShopOntoJob = false;
-    if (sv && sv.shop) {
-      const shopAddr = (SHOP_LOCATIONS[sv.shop]?.address || '').trim().toLowerCase();
-      const shopName = sv.shop.trim().toLowerCase();
-      const matchJob = tj.find(j => {
-        const jn = (j.job || '').trim().toLowerCase();
-        const ja = (j.address || '').trim().toLowerCase();
-        return jn === shopName || (shopAddr && ja === shopAddr);
-      });
-      if (matchJob) {
-        // Attach the shop notes to that job card (display only — not written to sheet).
-        // If the shop has no notes, preserve the job's own per-ticket note rather
-        // than overwriting it with empty string.
-        if (sv.notes) matchJob.notes = sv.notes;
-        mergedShopOntoJob = true;
-      }
-    }
 
     // Header: add row at TOP, then jobs
     h += `<div class="tcol">`;
@@ -1264,32 +1245,12 @@ function rBoard() {
         style="width:100%;font-size:11px"
         onkeydown="if(event.key==='Enter'){event.preventDefault();addJFull('${tech}');}">
     </div>`;
-    // Count: if we merged onto an existing job, the shop is NOT a separate card,
-    // so don't add +1 to the count.
-    const shopCount = (sv && sv.shop && !mergedShopOntoJob) ? 1 : 0;
     h += `<div class="thdr">
       <span class="tn" style="color:${tc}" onclick="openShopModal('${tech}')" title="Click to add shop visit">${tech}</span>
-      ${sv && sv.shop ? `<span class="shop-badge" style="color:${tc}" onclick="clearShop('${tech}')" title="Click to remove shop visit">+${sv.shop.replace(' Shop','')}</span>` : ''}
-      <span class="tcnt">${tj.length + shopCount}</span>
+      <span class="tcnt">${tj.length}</span>
     </div>
     <div class="tjobs" data-tech="${tech}">`;
-    // Standalone shop card — ONLY if there was no matching draggable ticket to merge onto.
     let stopOffset = 0;
-    if (sv && sv.shop && !mergedShopOntoJob) {
-      stopOffset = 1;
-      const addr = SHOP_LOCATIONS[sv.shop]?.address || '';
-      const dark = ['#006400','#0066FF','#B800FF','#FF00FF'].includes(tc);
-      const shopColor = sv.shop === 'North Shop' ? '#3b82f6' : '#10b981';
-      h += `<div class="jc" style="border-left-color:${shopColor};background:${shopColor}10;cursor:default">
-        <button type="button" class="jnumbtn" onclick="event.stopPropagation();openShopNoteInline('${tech}')" title="${sv.notes?'Edit note':'Add note'}" style="width:22px;height:22px;border-radius:50%;background:${shopColor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px;border:none;cursor:pointer;padding:0;position:relative">1${sv.notes?'<span class="jnumdot"></span>':''}</button>
-        <div class="jinfo">
-          <span class="jn">${sv.shop}</span>
-          ${sv.notes?`<span class="jnotes">${sv.notes.replace(/</g,'&lt;')}</span>`:''}
-          ${addr?`<span class="ja">📍 ${addr}</span>`:''}
-        </div>
-        ${canWrite?`<button class="db" onclick="event.stopPropagation();clearShop('${tech}')" title="Remove shop ticket">✕</button>`:''}
-      </div>`;
-    }
     if (!tj.length && !(sv && sv.shop)) h += `<div style="text-align:center;padding:16px;color:var(--dm);font-size:12px">NO TICKETS</div>`;
     else tj.forEach((j, idx) => { h += jobCard(j, canWrite, idx + 1 + stopOffset, tc); });
     h += `</div></div>`;
@@ -1532,20 +1493,6 @@ function _writeJobNote(j, noteText) {
 
 function saveJobNote() {
   if (_activeJobNoteId == null) return;
-  // Shop note path
-  if (typeof _activeJobNoteId === 'string' && _activeJobNoteId.startsWith('__shop__')) {
-    const tech = _activeJobNoteId.replace('__shop__','');
-    const note = (document.getElementById('jnotepopText').value || '').trim();
-    closeJobNote();
-    if (shopVisits[tech]) {
-      shopVisits[tech].notes = note;
-      localStorage.setItem('wrs_shops', JSON.stringify(shopVisits));
-      const col = TECHS.indexOf(tech) + 1;
-      sheetsSetValue(26, col, note ? 'SHOPNOTE:'+note : '').catch(()=>{});
-    }
-    render();
-    return;
-  }
   const j = jobs.find(x => x.id === _activeJobNoteId);
   if (!j) { closeJobNote(); return; }
   const note = (document.getElementById('jnotepopText').value || '').trim();
@@ -1558,19 +1505,6 @@ function saveJobNote() {
 
 function clearJobNote() {
   if (_activeJobNoteId == null) return;
-  // Shop note path
-  if (typeof _activeJobNoteId === 'string' && _activeJobNoteId.startsWith('__shop__')) {
-    const tech = _activeJobNoteId.replace('__shop__','');
-    closeJobNote();
-    if (shopVisits[tech]) {
-      shopVisits[tech].notes = '';
-      localStorage.setItem('wrs_shops', JSON.stringify(shopVisits));
-      const col = TECHS.indexOf(tech) + 1;
-      sheetsSetValue(26, col, '').catch(()=>{});
-    }
-    render();
-    return;
-  }
   const j = jobs.find(x => x.id === _activeJobNoteId);
   if (!j) { closeJobNote(); return; }
   j.notes = '';
@@ -1877,20 +1811,26 @@ function renderDriveFolders(parentId, folders) {
 }
 
 // ════════════════════════════════════════════
-//  SHOP MODAL
+//  SHOP MODAL — creates a real ticket at top of column
 // ════════════════════════════════════════════
 function openShopModal(tech) {
   if (!canWrite) return;
+  // Count existing shop tickets in this tech's column (max 3 per tech)
+  const techCol = TECHS.indexOf(tech) + 1;
+  const shopCount = jobs.filter(j => j.col === techCol &&
+    (j.job === 'North Shop' || j.job === 'South Shop')).length;
+  if (shopCount >= 3) {
+    toast(`${tech} already has 3 shop tickets — max reached`);
+    return;
+  }
   shopModalTech = tech;
-  shopModalSelected = shopVisits[tech]?.shop || null;
+  shopModalSelected = null;
   document.getElementById('shopModalTitle').textContent = `${tech} — Shop Ticket`;
-  document.getElementById('shopNoteInput').value = shopVisits[tech]?.notes || '';
-  document.getElementById('shopOkBtn').style.display = shopModalSelected ? 'block' : 'none';
-  document.getElementById('btnNorth').classList.toggle('sel', shopModalSelected==='North Shop');
-  document.getElementById('btnSouth').classList.toggle('sel', shopModalSelected==='South Shop');
+  document.getElementById('shopNoteInput').value = '';
+  document.getElementById('shopOkBtn').style.display = 'none';
+  document.getElementById('btnNorth').classList.remove('sel');
+  document.getElementById('btnSouth').classList.remove('sel');
   document.getElementById('shopModalBg').classList.add('open');
-  // Focus notes after brief delay
-  setTimeout(() => { if (shopModalSelected) document.getElementById('shopNoteInput').focus(); }, 100);
 }
 
 function selectShop(shop) {
@@ -1904,50 +1844,35 @@ function selectShop(shop) {
 async function confirmShop() {
   if (!shopModalTech || !shopModalSelected) return;
   const notes = document.getElementById('shopNoteInput').value.trim();
-  const savedTech = shopModalTech;
-  const savedShop = shopModalSelected;
-  const shopAddr = SHOP_LOCATIONS[savedShop]?.address || '';
+  const tech = shopModalTech;
+  const shop = shopModalSelected;
+  const shopAddr = SHOP_LOCATIONS[shop]?.address || '';
   closeShopModal();
   toast('Adding shop ticket...');
 
-  const col = TECHS.indexOf(savedTech) + 1;
-  if (col < 1) { toast('Tech not found'); return; }
-
-  // Pre-populate geoCache from hardcoded shop coords — instant, no network needed
-  if (shopAddr) {
-    const shopCoords = SHOP_LOCATIONS[savedShop];
-    if (shopCoords?.lat) geoCache[shopAddr] = { lat: shopCoords.lat, lng: shopCoords.lng };
+  // Pre-populate geoCache from hardcoded shop coords so map renders instantly
+  if (shopAddr && SHOP_LOCATIONS[shop]?.lat) {
+    geoCache[shopAddr] = { lat: SHOP_LOCATIONS[shop].lat, lng: SHOP_LOCATIONS[shop].lng };
   }
 
-  // Write shop ticket to row 25 (below all job/vendor rows, no conflicts)
-  await sheetsClear(25, col);
-  const cellVal = savedShop + (shopAddr ? ', '+shopAddr : '');
-  await sheetsSetValue(25, col, cellVal);
-  await sheetsSetBackground(25, col, '#00ff00');
+  // Build canonical job input "Name, Address"
+  const jobInput = shopAddr ? `${shop}, ${shopAddr}` : shop;
 
-  // Store notes in row 26 so all devices read them on sync
-  await sheetsSetValue(26, col, notes ? 'SHOPNOTE:'+notes : '').catch(()=>{});
-  // Also cache locally
-  shopVisits[savedTech] = { shop: savedShop, notes };
-  localStorage.setItem('wrs_shops', JSON.stringify(shopVisits));
-
-  toast(savedTech+' → '+savedShop);
-  loadData();
-}
-
-async function clearShop(tech) {
-  delete shopVisits[tech];
-  localStorage.setItem('wrs_shops', JSON.stringify(shopVisits));
-  const col = TECHS.indexOf(tech) + 1;
-  if (col >= 1) {
-    // Clear shop note from row 26 and shop ticket from row 25
-    await sheetsSetValue(26, col, '').catch(()=>{});
-    await sheetsClear(25, col);
-
+  isSaving = true;
+  try {
+    const res = await apiCall('/addJobAtTop', { techName: tech, jobInput, jobNote: notes });
+    if (!res.success) {
+      toast(res.error || 'Failed to add shop ticket');
+      return;
+    }
+    toast(`${tech} → ${shop}`);
+  } catch (e) {
+    toast('Failed to add shop ticket');
+    console.error(e);
+  } finally {
+    isSaving = false;
+    loadData();
   }
-  render();
-  toast('Shop removed from ' + tech);
-  loadData();
 }
 
 function closeShopModal() {
@@ -1955,32 +1880,234 @@ function closeShopModal() {
   shopModalTech = null; shopModalSelected = null;
 }
 
-// Open the per-job note popup pre-loaded with the shop ticket's notes.
-// Clicking the circle badge on a shop card triggers this.
-function openShopNoteInline(tech) {
-  if (!canWrite) return;
-  const sv = shopVisits[tech];
-  if (!sv || !sv.shop) return;
-  // Re-use the existing per-job note popup but wire Save/Clear to shop note
-  _activeJobNoteId = '__shop__' + tech;
-  const pop  = document.getElementById('jnotepop');
-  const bg   = document.getElementById('jnotebg');
-  const ta   = document.getElementById('jnotepopText');
-  const lbl  = document.getElementById('jnotepopJob');
-  const clr  = document.getElementById('jnotepopClear');
-  const addr = SHOP_LOCATIONS[sv.shop]?.address || '';
-  lbl.textContent = sv.shop + (addr ? ' — ' + addr : '');
-  ta.value = sv.notes || '';
-  clr.style.display = (sv.notes && String(sv.notes).trim()) ? '' : 'none';
-  bg.classList.add('show');
-  pop.classList.add('show');
-  pop.style.left = '50%'; pop.style.top = '50%'; pop.style.transform = 'translate(-50%,-50%)';
-  setTimeout(() => ta.focus(), 50);
-}
 // Close modal on background click
 document.getElementById('shopModalBg').addEventListener('click', function(e) {
   if(e.target===this) closeShopModal();
 });
+
+// ════════════════════════════════════════════
+//  INSTALLATION CALENDAR
+// ════════════════════════════════════════════
+// Admins schedule future installs. Stored in KV (via Worker), date-keyed.
+// Clicking "Promote" pushes the install to Jeff's column as a real ticket.
+// Techs see the calendar read-only.
+
+let calendarInstalls = [];        // all installs loaded from Worker
+let calendarViewYear = null;       // currently displayed year
+let calendarViewMonth = null;      // currently displayed month (0-11)
+let installDayDate = null;         // YYYY-MM-DD currently being edited
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+async function openCalendar() {
+  // Set initial view to current month
+  const now = new Date();
+  if (calendarViewYear === null) {
+    calendarViewYear  = now.getFullYear();
+    calendarViewMonth = now.getMonth();
+  }
+  document.getElementById('calendarBg').style.display = 'flex';
+  await loadCalendarData();
+  renderCalendar();
+}
+
+function closeCalendar() {
+  document.getElementById('calendarBg').style.display = 'none';
+}
+
+async function loadCalendarData() {
+  try {
+    const res = await apiCall('/getInstalls', {});
+    calendarInstalls = res.installs || [];
+  } catch (e) {
+    console.error('Calendar load failed:', e);
+    calendarInstalls = [];
+  }
+}
+
+function calNavMonth(delta) {
+  calendarViewMonth += delta;
+  if (calendarViewMonth < 0)  { calendarViewMonth = 11; calendarViewYear--; }
+  if (calendarViewMonth > 11) { calendarViewMonth = 0;  calendarViewYear++; }
+  renderCalendar();
+}
+
+function calGoToday() {
+  const now = new Date();
+  calendarViewYear  = now.getFullYear();
+  calendarViewMonth = now.getMonth();
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('calMonthLabel').textContent = `${MONTHS[calendarViewMonth]} ${calendarViewYear}`;
+  const grid = document.getElementById('calGrid');
+
+  // First day of month + how many days
+  const firstDay = new Date(calendarViewYear, calendarViewMonth, 1);
+  const firstWeekday = firstDay.getDay(); // 0 = Sun
+  const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
+
+  // Today's date for "current" highlight
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  // Build cells: empty cells before first day, then days
+  let html = '';
+  for (let i = 0; i < firstWeekday; i++) {
+    html += `<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);min-height:84px;opacity:.3"></div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calendarViewYear}-${String(calendarViewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const installs = calendarInstalls.filter(i => i.date === dateStr);
+    const isToday = (dateStr === todayStr);
+    const isPast = (dateStr < todayStr);
+    const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
+    const clickable = isAdmin;
+    html += `<div onclick="${clickable ? `openInstallDay('${dateStr}')` : ''}" style="background:${isToday?'rgba(59,130,246,.12)':'var(--sf2)'};border:1px solid ${isToday?'var(--ac)':'var(--bd)'};border-radius:var(--r8);min-height:84px;padding:6px 7px;cursor:${clickable?'pointer':'default'};${isPast?'opacity:.55;':''}transition:background .12s,transform .08s" ${clickable?'onmouseover="this.style.background=\'rgba(139,92,246,.08)\'" onmouseout="this.style.background=\''+(isToday?'rgba(59,130,246,.12)':'var(--sf2)')+'\'"':''}>
+      <div style="font-size:12px;font-weight:${isToday?800:600};color:${isToday?'var(--ac)':'var(--tx)'};margin-bottom:3px">${d}</div>`;
+    installs.forEach(install => {
+      html += `<div style="background:#8b5cf6;color:#fff;font-size:10px;font-weight:700;padding:3px 5px;border-radius:4px;margin-bottom:3px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${install.name.replace(/"/g,'&quot;')}">${install.name}</div>`;
+    });
+    html += `</div>`;
+  }
+  grid.innerHTML = html;
+
+  // Footer hint
+  const isAdmin = curUser && (curUser.role === 'admin' || curUser.role === 'write');
+  document.getElementById('calFooter').textContent = isAdmin
+    ? `Click any day to schedule an install (max 2/day) · Click an existing install to manage or promote it`
+    : `Read-only · Contact an admin to schedule installs`;
+}
+
+function openInstallDay(dateStr) {
+  if (!curUser || (curUser.role !== 'admin' && curUser.role !== 'write')) return;
+  installDayDate = dateStr;
+  // Format date nicely for display
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const dayLabel = dt.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  document.getElementById('installDayTitle').textContent = 'Installation';
+  document.getElementById('installDaySubtitle').textContent = dayLabel;
+
+  // List existing installs for this day
+  const installs = calendarInstalls.filter(i => i.date === dateStr);
+  const listEl = document.getElementById('installDayList');
+  if (installs.length === 0) {
+    listEl.innerHTML = '';
+  } else {
+    listEl.innerHTML = installs.map(ins => `
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);padding:10px 12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:3px;word-break:break-word">${ins.name.replace(/</g,'&lt;')}</div>
+            ${ins.address?`<div style="font-size:11px;color:var(--dm2);margin-bottom:3px;word-break:break-word">📍 ${ins.address.replace(/</g,'&lt;')}</div>`:''}
+            ${ins.notes?`<div style="font-size:11px;color:#f97316;font-weight:600;line-height:1.4;word-break:break-word">${ins.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+            <button onclick="promoteInstall('${ins.date}', ${ins.slot})" style="background:#10b981;border:none;border-radius:6px;color:#fff;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap" title="Move this install to Jeff's column now">→ Promote</button>
+            <button onclick="deleteInstall('${ins.date}', ${ins.slot})" style="background:transparent;border:1px solid var(--rd);border-radius:6px;color:var(--rd);padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">Delete</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Show/hide add form depending on capacity
+  const formEl = document.getElementById('installDayForm');
+  const addBtn = document.getElementById('installAddBtn');
+  if (installs.length >= 2) {
+    formEl.style.opacity = '.4';
+    formEl.style.pointerEvents = 'none';
+    addBtn.disabled = true;
+    addBtn.style.opacity = '.4';
+    addBtn.style.cursor = 'not-allowed';
+    addBtn.textContent = 'Day Full (max 2)';
+  } else {
+    formEl.style.opacity = '1';
+    formEl.style.pointerEvents = 'auto';
+    addBtn.disabled = false;
+    addBtn.style.opacity = '1';
+    addBtn.style.cursor = 'pointer';
+    addBtn.textContent = 'Add Install';
+  }
+
+  // Clear input fields
+  document.getElementById('installNameInput').value = '';
+  document.getElementById('installAddrInput').value = '';
+  document.getElementById('installNotesInput').value = '';
+
+  document.getElementById('installDayBg').style.display = 'flex';
+}
+
+function closeInstallDay() {
+  document.getElementById('installDayBg').style.display = 'none';
+  installDayDate = null;
+}
+
+async function submitInstall() {
+  if (!installDayDate) return;
+  const name  = document.getElementById('installNameInput').value.trim();
+  const addr  = document.getElementById('installAddrInput').value.trim();
+  const notes = document.getElementById('installNotesInput').value.trim();
+  if (!name) {
+    toast('Job name is required');
+    return;
+  }
+  try {
+    const res = await apiCall('/addInstall', { date: installDayDate, name, address: addr, notes });
+    if (!res.success) {
+      toast(res.error || 'Failed to add install');
+      return;
+    }
+    toast('Install scheduled');
+    // Reload and rerender
+    await loadCalendarData();
+    openInstallDay(installDayDate); // re-open same day to show new entry
+    renderCalendar();
+  } catch (e) {
+    toast('Failed to add install');
+    console.error(e);
+  }
+}
+
+async function deleteInstall(date, slot) {
+  if (!confirm('Delete this scheduled install?')) return;
+  try {
+    const res = await apiCall('/deleteInstall', { date, slot });
+    if (!res.success) {
+      toast(res.error || 'Failed to delete');
+      return;
+    }
+    toast('Install deleted');
+    await loadCalendarData();
+    openInstallDay(date);
+    renderCalendar();
+  } catch (e) {
+    toast('Failed to delete install');
+    console.error(e);
+  }
+}
+
+async function promoteInstall(date, slot) {
+  if (!confirm("Promote this install to Jeff's column now?")) return;
+  try {
+    const res = await apiCall('/promoteInstall', { date, slot });
+    if (!res.success) {
+      toast(res.error || 'Failed to promote');
+      return;
+    }
+    toast("Install moved to Jeff's column");
+    closeInstallDay();
+    await loadCalendarData();
+    renderCalendar();
+    // Refresh the main board to show the new ticket
+    loadData();
+  } catch (e) {
+    toast('Failed to promote install');
+    console.error(e);
+  }
+}
 
 // ════════════════════════════════════════════
 //  DRAG & DROP
@@ -2259,11 +2386,8 @@ function renderMapList(vj, legs, totalMin, totalMi) {
 async function renderTechView(withMap=true) {
   if (!curUser?.tech) return;
   const tech = curUser.tech;
-  // Reload shop notes from localStorage
-  try { const s=localStorage.getItem('wrs_shops'); if(s){const p=JSON.parse(s);Object.keys(p).forEach(k=>shopVisits[k]=p[k]);}} catch(e){}
   // Kick off Drive folder load in parallel (no await — don't block the render)
   loadDriveFolders();
-  const sv = shopVisits[tech]; // may have notes to display
   const tc = TC[tech]||'#888';
   const dark=['#006400','#0066FF','#B800FF','#FF00FF'].includes(tc);
   const tvTickets = document.getElementById('tvTickets');
@@ -2311,26 +2435,13 @@ async function renderTechView(withMap=true) {
 
   // Build stops — shop always gets coords directly from SHOP_LOCATIONS (no geoCache needed)
   const SHOP_NAMES = Object.keys(SHOP_LOCATIONS);
-  // The tech's configured shop visit (if any) — used to attach notes to a
-  // matching draggable ticket so we don't render a separate "double ticket".
-  const svShopAddr = (sv?.shop && SHOP_LOCATIONS[sv.shop]?.address || '').trim().toLowerCase();
-  const svShopName = (sv?.shop || '').trim().toLowerCase();
   const allStops = myJobs.map((j,i)=>{
     const isShop = SHOP_NAMES_SET.has(j.job);
-    // Notes attach if the job IS a known shop OR if the job's name/address
-    // matches the tech's currently-configured shop visit.
-    const jn = (j.job||'').trim().toLowerCase();
-    const ja = (j.address||'').trim().toLowerCase();
-    const matchesShopVisit = sv && sv.shop && (jn === svShopName || (svShopAddr && ja === svShopAddr));
-    // Shop notes take precedence when the stop is a shop visit; otherwise
-    // show the per-job note (added via the clickable number badge).
-    const notes = (isShop || matchesShopVisit)
-      ? (shopVisits[tech]?.notes || j.notes || '')
-      : (j.notes || '');
+    const notes = j.notes || '';
     let lat, lng;
     if (isShop) {
       // Always use hardcoded coords — never depend on geocache for shops
-      const shopLoc = SHOP_LOCATIONS[j.job] || SHOP_LOCATIONS[sv?.shop];
+      const shopLoc = SHOP_LOCATIONS[j.job];
       lat = shopLoc?.lat || null;
       lng = shopLoc?.lng || null;
     } else {
@@ -2338,7 +2449,7 @@ async function renderTechView(withMap=true) {
       lat = cached?.lat || j.lat || null;
       lng = cached?.lng || j.lng || null;
     }
-    return { label:String(i+1), name:j.job, notes, addr:j.address, lat, lng, isShop:(isShop||matchesShopVisit), jobRef:j };
+    return { label:String(i+1), name:j.job, notes, addr:j.address, lat, lng, isShop, jobRef:j };
   });
 
   // Always build cards immediately so the list is visible
