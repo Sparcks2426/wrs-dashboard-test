@@ -321,6 +321,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 <div id="dashWrap">
 <div class="app">
 
+  <!-- On-Call reminder banner (shown to the tech currently on call, Mon-Sun) -->
+  <div id="oncallBanner" style="display:none;background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 18px;border-radius:var(--r12);margin-bottom:14px;font-family:Inter,sans-serif;font-weight:700;text-align:center;box-shadow:0 4px 20px rgba(239,68,68,.3);font-size:14px;line-height:1.5"></div>
+
   <!-- Top Bar -->
   <div class="topbar">
     <div class="topbar-brand">Waste Recycling Services Operations</div>
@@ -330,7 +333,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <button class="sync-btn" onclick="loadData()">↻ SYNC</button>
     </div>
     <div class="topbar-spacer"></div>
-    <div class="userbar" id="userbar"></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+      <div class="userbar" id="userbar"></div>
+      <div id="topbarButtons" style="display:none;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        <button id="calendarBtn" onclick="openCalendar()" style="display:none;background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">📅 Calendar</button>
+        <button id="oncallBtn" onclick="openOncall()" style="display:none;background:#ef4444;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">🚨 On Call</button>
+        <button id="annBtn" onclick="openAnnAdmin()" style="display:none;background:#3b82f6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">📢 Announcements</button>
+      </div>
+    </div>
   </div>
 
   <!-- Admin View -->
@@ -358,9 +368,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="toolbar">
       <input type="text" class="sbox" id="sbox" placeholder="Search jobs or techs...">
       <button id="fullSchedBtn" onclick="backToTechView()" style="display:none;background:var(--ac);border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">← My View</button>
-      <button id="calendarBtn" onclick="openCalendar()" style="background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">📅 Installation Calendar</button>
-      <button id="oncallBtn" onclick="openOncall()" style="display:none;background:#ef4444;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">🚨 On Call Rotation</button>
-      <button id="annBtn" onclick="openAnnAdmin()" style="display:none;background:#3b82f6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;white-space:nowrap">📢 Announcements</button>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -625,11 +632,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <button onclick="closeOncall()" style="background:none;border:none;color:var(--dm2);font-size:24px;cursor:pointer;padding:4px 10px">✕</button>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px">
-      <button onclick="oncallNav(-1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">◀ 6 wks</button>
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+      <button onclick="oncallNav(-1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">◀</button>
       <div id="oncallLabel" style="font-size:18px;font-weight:700;min-width:200px;text-align:center;color:var(--tx)">—</div>
-      <button onclick="oncallNav(1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">6 wks ▶</button>
+      <button onclick="oncallNav(1)" style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);color:var(--tx);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">▶</button>
       <button onclick="oncallGoToday()" style="background:var(--ac);border:none;border-radius:var(--r8);color:#fff;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700;margin-left:10px">TODAY</button>
+      <div style="display:flex;gap:0;border:1px solid var(--bd);border-radius:var(--r8);overflow:hidden;margin-left:10px">
+        <button id="oncallBtnSix" onclick="oncallSetMode('six')" style="background:var(--ac);border:none;color:#fff;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700">6 WEEKS</button>
+        <button id="oncallBtnYear" onclick="oncallSetMode('year')" style="background:var(--sf2);border:none;color:var(--tx);padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700">YEAR</button>
+      </div>
     </div>
 
     <div id="oncallGrid"></div>
@@ -1082,22 +1093,26 @@ function startDash(user) {
   // Calendar button visibility: admins/write always see it, plus Jeff and Landi
   // (so they can view their installation schedule). Other techs don't see it.
   const calBtn = document.getElementById('calendarBtn');
-  if (calBtn) {
-    const showCal = canWrite || (isTech && (user.tech === 'Jeff' || user.tech === 'Landi'));
-    calBtn.style.display = showCal ? 'inline-block' : 'none';
-  }
+  const showCalBtn = canWrite || (isTech && (user.tech === 'Jeff' || user.tech === 'Landi'));
+  if (calBtn) calBtn.style.display = showCalBtn ? 'inline-block' : 'none';
   // On-Call Rotation button: admins/write + the 6 rotation techs
   const oncallBtn = document.getElementById('oncallBtn');
-  if (oncallBtn) {
-    const showOncall = canWrite || (isTech && ONCALL_TECHS.includes(user.tech));
-    oncallBtn.style.display = showOncall ? 'inline-block' : 'none';
-  }
+  const showOncallBtn = canWrite || (isTech && ONCALL_TECHS.includes(user.tech));
+  if (oncallBtn) oncallBtn.style.display = showOncallBtn ? 'inline-block' : 'none';
   // Announcements admin button: admins/write only
   const annBtn = document.getElementById('annBtn');
   if (annBtn) annBtn.style.display = canWrite ? 'inline-block' : 'none';
+  // Show the topbar buttons row if ANY button is visible
+  const topbarBtns = document.getElementById('topbarButtons');
+  if (topbarBtns) {
+    const anyVisible = showCalBtn || showOncallBtn || canWrite;
+    topbarBtns.style.display = anyVisible ? 'flex' : 'none';
+  }
 
   // Check for announcements (popup once per day for all users)
   checkAnnouncements();
+  // Check on-call reminder banner
+  updateOncallBanner();
 
   // Load Leaflet lazily, then fetch data (map won't block login)
   loadLeaflet(() => { loadData(); });
@@ -2133,9 +2148,7 @@ async function postAnnouncement() {
     const res = await apiCall('/addAnnouncement', { text, color, link, expiresOn });
     if (!res.success) { toast(res.error || 'Failed to post'); return; }
     toast('Announcement posted');
-    document.getElementById('annComposeText').value = '';
-    document.getElementById('annComposeLink').value = '';
-    await renderAnnAdminList();
+    closeAnnAdmin();
   } catch (e) {
     toast('Failed to post announcement');
     console.error(e);
@@ -2166,12 +2179,11 @@ const ONCALL_TECHS = ['Louis','Christian','Geni','Jeff','Mijail','Alex'];
 const ONCALL_ANCHOR = new Date(2026, 2, 21); // Sat Mar 21, 2026 = Louis (week 0)
 
 let oncallAnchor = null; // first Saturday of the displayed range
+let oncallMode = 'six';  // 'six' (default) or 'year'
 
 // Given a Saturday date, return which tech is on call that weekend.
 function whoIsOnCall(saturday) {
-  // ms in a week
   const wkMs = 7 * 24 * 60 * 60 * 1000;
-  // Floor the anchor and the saturday to midnight UTC-naive to avoid DST drift
   const a = new Date(ONCALL_ANCHOR.getFullYear(), ONCALL_ANCHOR.getMonth(), ONCALL_ANCHOR.getDate());
   const s = new Date(saturday.getFullYear(), saturday.getMonth(), saturday.getDate());
   const diffWeeks = Math.round((s - a) / wkMs);
@@ -2180,14 +2192,26 @@ function whoIsOnCall(saturday) {
   return ONCALL_TECHS[idx];
 }
 
-// Return the Saturday of the week containing `d` (using Mon-as-start-of-week,
-// which means Sat of THIS week's Mon-Fri pair, i.e. the very next Saturday
-// after starting Monday). Easier: find Saturday by going forward.
+// Return the Saturday of the week containing `d`
 function getSaturdayOfWeek(d) {
   const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  // 0=Sun, 1=Mon ... 6=Sat
   const offset = (6 - out.getDay() + 7) % 7;
   out.setDate(out.getDate() + offset);
+  return out;
+}
+
+// Given any date, find the Saturday <= that date (rolls back if mid-week)
+function getCurrentOnCallSaturday(d) {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  // 0=Sun, 1=Mon, ..., 6=Sat
+  // If Sun, the on-call weekend started yesterday → go back 1 day
+  // If Mon-Fri, the upcoming weekend (Sat) is on-call → go forward to Sat
+  // If Sat, that's the on-call day already
+  const day = out.getDay();
+  if (day === 6) return out;           // Saturday → today is the start
+  if (day === 0) { out.setDate(out.getDate() - 1); return out; } // Sunday → yesterday was Sat
+  // Mon-Fri → upcoming Saturday
+  out.setDate(out.getDate() + (6 - day));
   return out;
 }
 
@@ -2203,11 +2227,24 @@ function closeOncall() {
   document.getElementById('oncallBg').style.display = 'none';
 }
 
-function oncallNav(deltaSixWeeks) {
-  // Step by 6 weeks at a time (one full cycle)
+function oncallSetMode(mode) {
+  oncallMode = mode;
+  document.getElementById('oncallBtnSix').style.background  = mode === 'six'  ? 'var(--ac)' : 'var(--sf2)';
+  document.getElementById('oncallBtnSix').style.color       = mode === 'six'  ? '#fff' : 'var(--tx)';
+  document.getElementById('oncallBtnYear').style.background = mode === 'year' ? 'var(--ac)' : 'var(--sf2)';
+  document.getElementById('oncallBtnYear').style.color      = mode === 'year' ? '#fff' : 'var(--tx)';
+  renderOncall();
+}
+
+function oncallNav(delta) {
   if (!oncallAnchor) oncallAnchor = getSaturdayOfWeek(new Date());
   const out = new Date(oncallAnchor);
-  out.setDate(out.getDate() + (deltaSixWeeks * 6 * 7));
+  // In 6-week mode: step 6 weeks. In year mode: step 1 year.
+  if (oncallMode === 'six') {
+    out.setDate(out.getDate() + (delta * 6 * 7));
+  } else {
+    out.setFullYear(out.getFullYear() + delta);
+  }
   oncallAnchor = out;
   renderOncall();
 }
@@ -2217,10 +2254,41 @@ function oncallGoToday() {
   renderOncall();
 }
 
+// Reminder banner: shown all week (Mon-Sun) to the tech currently on call.
+// "Currently on call" means: today falls in the Mon..Sun window where Sat-Sun
+// of that window is the on-call weekend.
+function updateOncallBanner() {
+  const banner = document.getElementById('oncallBanner');
+  if (!banner) return;
+  if (!curUser) { banner.style.display = 'none'; return; }
+  // Only show for techs in the rotation
+  if (!ONCALL_TECHS.includes(curUser.tech)) { banner.style.display = 'none'; return; }
+
+  const now = new Date();
+  // Find the Saturday of the on-call weekend for THIS week (Mon-Sun window).
+  // If today is Sun, the on-call weekend was yesterday (Sat). Otherwise, the
+  // upcoming Saturday (this week).
+  const onCallSat = getCurrentOnCallSaturday(now);
+  const onCallSun = new Date(onCallSat); onCallSun.setDate(onCallSun.getDate()+1);
+  const onCallTech = whoIsOnCall(onCallSat);
+
+  if (onCallTech !== curUser.tech) { banner.style.display = 'none'; return; }
+
+  const tc = TC[curUser.tech] || '#fff';
+  const satLbl = `${MONTHS[onCallSat.getMonth()].slice(0,3)} ${onCallSat.getDate()}`;
+  const sunLbl = `${MONTHS[onCallSun.getMonth()].slice(0,3)} ${onCallSun.getDate()}`;
+  banner.innerHTML = `🚨 <span style="font-weight:800">${curUser.tech}</span> — You're on call this weekend: <span style="font-weight:800">Sat ${satLbl}</span> &amp; <span style="font-weight:800">Sun ${sunLbl}</span>`;
+  banner.style.display = 'block';
+}
+
 function renderOncall() {
+  if (oncallMode === 'year') renderOncallYear();
+  else                       renderOncallSix();
+}
+
+function renderOncallSix() {
   const grid = document.getElementById('oncallGrid');
   const todayStr = fmtDate(new Date());
-  // Show 6 weekends starting from oncallAnchor
   const weekends = [];
   for (let i = 0; i < 6; i++) {
     const sat = new Date(oncallAnchor); sat.setDate(sat.getDate() + i*7);
@@ -2228,7 +2296,6 @@ function renderOncall() {
     weekends.push({ sat, sun, tech: whoIsOnCall(sat) });
   }
 
-  // Label: first → last weekend month range
   const first = weekends[0].sat;
   const last  = weekends[5].sun;
   const sameYear = first.getFullYear() === last.getFullYear();
@@ -2237,13 +2304,11 @@ function renderOncall() {
     : `${MONTHS[first.getMonth()].slice(0,3)} ${first.getDate()}, ${first.getFullYear()} – ${MONTHS[last.getMonth()].slice(0,3)} ${last.getDate()}, ${last.getFullYear()}`;
   document.getElementById('oncallLabel').textContent = label;
 
-  // Header
   let html = `<div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;margin-bottom:6px;font-size:10px;font-weight:800;color:var(--dm2);letter-spacing:1px;text-align:center;padding:0 2px">
     <div style="text-align:left;padding-left:8px">WEEK</div><div>SATURDAY</div><div>SUNDAY</div>
   </div>`;
   weekends.forEach(w => {
     const tc = TC[w.tech] || '#888';
-    // Some tech colors are dark — pick contrasting text color
     const darkBgs = ['#006400','#0066FF','#B800FF','#FF00FF','#000080','#8B0000','#191970'];
     const isDark = darkBgs.includes(tc) || tc.toLowerCase() === '#000000';
     const txtColor = isDark ? '#fff' : '#000';
@@ -2263,6 +2328,55 @@ function renderOncall() {
     </div>`;
   });
 
+  grid.innerHTML = html;
+}
+
+function renderOncallYear() {
+  // 52 consecutive weekends starting from oncallAnchor
+  const grid = document.getElementById('oncallGrid');
+  const todayStr = fmtDate(new Date());
+  const weekends = [];
+  for (let i = 0; i < 52; i++) {
+    const sat = new Date(oncallAnchor); sat.setDate(sat.getDate() + i*7);
+    const sun = new Date(sat); sun.setDate(sun.getDate()+1);
+    weekends.push({ sat, sun, tech: whoIsOnCall(sat) });
+  }
+
+  const first = weekends[0].sat;
+  const last  = weekends[51].sun;
+  const sameYear = first.getFullYear() === last.getFullYear();
+  const label = sameYear
+    ? `${first.getFullYear()} · ${MONTHS[first.getMonth()].slice(0,3)} – ${MONTHS[last.getMonth()].slice(0,3)}`
+    : `${MONTHS[first.getMonth()].slice(0,3)} ${first.getFullYear()} – ${MONTHS[last.getMonth()].slice(0,3)} ${last.getFullYear()}`;
+  document.getElementById('oncallLabel').textContent = label;
+
+  // Group by month for a clean year layout
+  const byMonth = {};
+  weekends.forEach(w => {
+    const key = `${w.sat.getFullYear()}-${String(w.sat.getMonth()+1).padStart(2,'0')}`;
+    (byMonth[key] ||= []).push(w);
+  });
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px">';
+  Object.keys(byMonth).sort().forEach(key => {
+    const [yr, mo] = key.split('-').map(Number);
+    html += `<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r8);padding:10px">
+      <div style="font-size:12px;font-weight:800;color:var(--dm2);letter-spacing:1px;margin-bottom:8px;text-align:center">${MONTHS[mo-1]} ${yr}</div>`;
+    byMonth[key].forEach(w => {
+      const tc = TC[w.tech] || '#888';
+      const darkBgs = ['#006400','#0066FF','#B800FF','#FF00FF','#000080','#8B0000','#191970'];
+      const isDark = darkBgs.includes(tc) || tc.toLowerCase() === '#000000';
+      const txtColor = isDark ? '#fff' : '#000';
+      const isThisWeek = (fmtDate(w.sat) <= todayStr && todayStr <= fmtDate(w.sun));
+      const isPast = fmtDate(w.sun) < todayStr;
+      html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;${isPast?'opacity:.45;':''}">
+        <div style="flex:1;font-size:11px;color:var(--dm2);font-weight:600">Sat ${w.sat.getDate()} – Sun ${w.sun.getDate()}</div>
+        <div style="background:${tc};color:${txtColor};border-radius:6px;padding:4px 10px;font-weight:800;font-size:11px;min-width:78px;text-align:center;border:${isThisWeek?'2px solid var(--ac)':'1px solid transparent'}">${w.tech}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += '</div>';
   grid.innerHTML = html;
 }
 
