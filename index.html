@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <title>WRS Operations Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -336,8 +336,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
       <div class="userbar" id="userbar"></div>
       <div id="topbarButtons" style="display:none;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-        <button id="calendarBtn" onclick="openCalendar()" style="display:none;background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">📅 Calendar</button>
-        <button id="oncallBtn" onclick="openOncall()" style="display:none;background:#ef4444;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">🚨 On Call</button>
+        <button id="calendarBtn" onclick="openCalendar()" style="display:none;background:#8b5cf6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">📅 Installation Calendar</button>
+        <button id="oncallBtn" onclick="openOncall()" style="display:none;background:#ef4444;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">🚨 On Call Rotation</button>
         <button id="annBtn" onclick="openAnnAdmin()" style="display:none;background:#3b82f6;border:none;border-radius:var(--r8);color:#fff;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">📢 Announcements</button>
       </div>
     </div>
@@ -1069,6 +1069,23 @@ function startDash(user) {
   viewingAll = false;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('dashWrap').style.display = 'block';
+
+  // ── Mobile UX on login: scroll to top + reset zoom ──
+  // Briefly force the viewport to scale=1.0 so any prior pinch-zoom is reset,
+  // then restore so the user can still pinch-zoom afterward if they want.
+  try {
+    const vp = document.querySelector('meta[name="viewport"]');
+    if (vp) {
+      const orig = vp.getAttribute('content');
+      vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+      setTimeout(() => { vp.setAttribute('content', orig); }, 350);
+    }
+    // Scroll the page to top so techs land at the top of their view
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  } catch (e) {}
+
   if (!canWrite) document.getElementById('dashWrap').classList.add('readonly');
   else           document.getElementById('dashWrap').classList.remove('readonly');
 
